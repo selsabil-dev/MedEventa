@@ -13,4 +13,12 @@ const hasPermission = (role, permission) => {
   return permissions[role] && permissions[role].includes(permission);
 };
 
-module.exports = { permissions, hasPermission };
+// middleware générique
+const requirePermission = (permission) => (req, res, next) => {
+  if (!req.user || !hasPermission(req.user.role, permission)) {
+    return res.status(403).json({ message: 'Permission refusée' });
+  }
+  next();
+};
+
+module.exports = { permissions, hasPermission, requirePermission };

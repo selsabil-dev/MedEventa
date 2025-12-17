@@ -17,6 +17,7 @@ CREATE TABLE utilisateur (
     ) NOT NULL,
     photo VARCHAR(255),
     institution VARCHAR(255),a  
+    institution VARCHAR(255),
     domaine_recherche VARCHAR(255),
     biographie TEXT,
     pays VARCHAR(100)

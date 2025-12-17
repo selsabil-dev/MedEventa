@@ -1,55 +1,55 @@
-const express = require('express');
-const bodyParser = require('body-parser');
+// server.js
 require('dotenv').config();
-const authRoutes = require('./routes/auth.routes');
-const eventRoutes = require('./routes/event.routes'); // Ajout
-const { verifyToken } = require('./middlewares/auth.middleware');
-const submissionRoutes = require('./routes/submission.routes');
+const express = require('express');
 
+const authRoutes = require('./routes/auth.routes');
+const eventRoutes = require('./routes/event.routes');
+const sessionRoutes = require('./routes/session.routes');
+const inscriptionRoutes = require('./routes/inscription.routes');
+const { verifyToken } = require('./middlewares/auth.middleware');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Logger simple
 app.use((req, res, next) => {
-  console.log(` ${req.method} ${req.url}`);
+  console.log(`${req.method} ${req.url}`);
   next();
 });
 
-app.use(express.json()); // bodyParser.json() supprimé comme suggéré
+// Pour parser le JSON
+app.use(express.json());
 
+// Routes principales
 app.use('/api/auth', authRoutes);
-app.use('/api/events', eventRoutes); // Ajout
-app.use('/api/events', submissionRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api', sessionRoutes);              // /api/events/:eventId/sessions etc.
+app.use('/api/inscriptions', inscriptionRoutes);
 
-
-// CETTE ROUTE DOIT ÊTRE LÀ, AVANT LE 404
+// Route profil protégée
 app.get('/api/profile', verifyToken, (req, res) => {
   res.json({
     message: 'Profil accessible',
-    user: req.user
+    user: req.user,
   });
 });
 
+// Route test
 app.get('/test', (req, res) => {
-  res.json({ message: ' Serveur fonctionne correctement!' });
+  res.json({ message: 'Serveur fonctionne correctement!' });
 });
 
 // 404 en dernier
 app.use((req, res) => {
   res.status(404).json({
-    message: ` Route non trouvée: ${req.method} ${req.originalUrl}`
+    message: `Route non trouvée: ${req.method} ${req.originalUrl}`,
   });
 });
 
-
-
+// Lancement serveur
 app.listen(port, () => {
-  console.log(`\n Serveur Express démarré sur le port ${port}`);
-  console.log(` Test: http://localhost:${port}/test`);
-  console.log(` Register: http://localhost:${port}/api/auth/register`);
-  console.log(` Login: http://localhost:${port}/api/auth/login\n`);
-  console.log(`Forgot Password: http://localhost:${port}/api/auth/forgot-password`);
-  console.log(`Reset Password: http://localhost:${port}/api/auth/reset-password\n`);
-  console.log(`creat somission: http://localhost:${port}/api/events/1/submissions`)
-
+  console.log(`\nServeur Express démarré sur le port ${port}`);
+  console.log(`Test:     http://localhost:${port}/test`);
+  console.log(`Register: http://localhost:${port}/api/auth/register`);
+  console.log(`Login:    http://localhost:${port}/api/auth/login\n`);
 });
