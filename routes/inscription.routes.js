@@ -4,7 +4,9 @@ const router = express.Router();
 
 const { register, validateInscription ,
   getPaymentStatusController,
-  updatePaymentStatusController,} = require('../controllers/inscription.controller');
+  updatePaymentStatusController,
+generateBadgeController,
+  getBadgeController,} = require('../controllers/inscription.controller');
 const { verifyToken } = require('../middlewares/auth.middleware');
 const { requirePermission } = require('../middlewares/permissions');
 
@@ -30,4 +32,19 @@ router.put(
   requirePermission('manage_inscriptions'), // ou autre permission pour ORGA
   updatePaymentStatusController
 );
+// POST /api/inscriptions/:inscriptionId/generate-badge  (orga/admin)
+router.post(
+  '/:inscriptionId/generate-badge',
+  verifyToken,
+  requirePermission('manage_inscriptions'),
+  generateBadgeController
+);
+
+// GET /api/inscriptions/badge/:code  (afficher / vérifier le badge)
+router.get(
+  '/badge/:code',
+  verifyToken,
+  getBadgeController
+);
+
 module.exports = router;

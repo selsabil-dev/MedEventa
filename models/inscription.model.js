@@ -46,6 +46,41 @@ const updatePaymentStatus = (inscriptionId, status, callback) => {
     callback(null, result.affectedRows);
   });
 };
+// Générer un badge unique pour une inscription
+const generateBadge = (inscriptionId, callback) => {
+  const code = uuidv4(); // code unique [web:49][web:173]
 
+  const sql = `
+    UPDATE inscription
+    SET badge = ?
+    WHERE id = ?
+  `;
+
+  db.query(sql, [code, inscriptionId], (err, result) => {
+    if (err) {
+      console.error('Erreur generateBadge:', err);
+      return callback(err, null);
+    }
+    if (result.affectedRows === 0) {
+      return callback(null, null); // inscription non trouvée
+    }
+    callback(null, code);
+  });
+};
+
+const getBadgeByCode = (code, callback) => {
+  const sql = `
+    SELECT id, participant_id, evenement_id, badge, date_inscription
+    FROM inscription
+    WHERE badge = ?
+  `;
+
+  db.query(sql, [code], (err, results) => {
+    if (err) return callback(err, null);
+    if (results.length === 0) return callback(null, null);
+    callback(null, results[0]);
+  });
+};
 module.exports = { registerInscription , getPaymentStatus,
-  updatePaymentStatus,};
+  updatePaymentStatus,generateBadge,
+  getBadgeByCode,};

@@ -5,6 +5,8 @@ const {
   registerInscription,
   getPaymentStatus,
   updatePaymentStatus,
+  generateBadge,
+  getBadgeByCode,
 } = require('../models/inscription.model');
 
 // Middleware qui applique la validation dynamique selon le profil
@@ -99,10 +101,55 @@ const updatePaymentStatusController = (req, res) => {
     });
   });
 };
+// POST /api/inscriptions/:inscriptionId/generate-badge
+// Générer (ou régénérer) un badge après paiement
+const generateBadgeController = (req, res) => {
+  const { inscriptionId } = req.params;
+
+  generateBadge(inscriptionId, (err, code) => {
+    if (err) {
+      console.error('Erreur generateBadgeController:', err);
+      return res.status(500).json({ message: 'Erreur serveur' });
+    }
+    if (!code) {
+      return res.status(404).json({ message: 'Inscription non trouvée' });
+    }
+
+    res.status(201).json({
+      message: 'Badge généré avec succès',
+      inscriptionId: Number(inscriptionId),
+      code_badge: code,
+      lien: `/api/inscriptions/badge/${code}`,
+    });
+  });
+};
+
+// GET /api/inscriptions/badge/:code
+// Récupérer les infos du badge (carte d'accès)
+const getBadgeController = (req, res) => {
+  const { code } = req.params;
+
+  getBadgeByCode(code, (err, badgeData) => {
+    if (err) {
+      console.error('Erreur getBadgeController:', err);
+      return res.status(500).json({ message: 'Erreur serveur' });
+    }
+    if (!badgeData) {
+      return res.status(404).json({ message: 'Badge introuvable' });
+    }
+
+    res.json({
+      message: 'Badge trouvé',
+      badge: badgeData,
+    });
+  });
+};
 
 module.exports = {
   validateInscription,
   register,
   getPaymentStatusController,
   updatePaymentStatusController,
+  generateBadgeController,
+  getBadgeController,
 };
