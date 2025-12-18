@@ -81,6 +81,40 @@ const getBadgeByCode = (code, callback) => {
     callback(null, results[0]);
   });
 };
+const getParticipants = (eventId, profil, callback) => {
+  // profil peut être null → pas de filtre [web:191][web:197]
+  let sql = `
+    SELECT 
+      i.id AS inscription_id,
+      u.id AS utilisateur_id,
+      u.nom,
+      u.prenom,
+      u.email,
+      u.role AS profil,
+      i.statut_paiement,
+      i.badge,
+      i.date_inscription
+    FROM inscription i
+    JOIN utilisateur u ON i.participant_id = u.id
+    WHERE i.evenement_id = ?
+  `;
+  const params = [eventId];
+
+  if (profil) {
+    sql += ' AND u.role = ?';
+    params.push(profil);
+  }
+
+  sql += ' ORDER BY i.date_inscription DESC';
+
+  db.query(sql, params, (err, results) => {
+    if (err) {
+      console.error('Erreur getParticipants:', err);
+      return callback(err, null);
+    }
+    callback(null, results);
+  });
+};
 module.exports = { registerInscription , getPaymentStatus,
   updatePaymentStatus,generateBadge,
-  getBadgeByCode,};
+  getBadgeByCode, getParticipants,};

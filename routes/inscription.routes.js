@@ -6,7 +6,7 @@ const { register, validateInscription ,
   getPaymentStatusController,
   updatePaymentStatusController,
 generateBadgeController,
-  getBadgeController,} = require('../controllers/inscription.controller');
+  getBadgeController,getParticipantsController, } = require('../controllers/inscription.controller');
 const { verifyToken } = require('../middlewares/auth.middleware');
 const { requirePermission } = require('../middlewares/permissions');
 
@@ -46,5 +46,11 @@ router.get(
   verifyToken,
   getBadgeController
 );
-
+// GET /api/inscriptions/event/:eventId/participants?profil=COMMUNICANT
+router.get(
+  '/event/:eventId/participants',
+  verifyToken,
+  requirePermission('manage_inscriptions'), // ou rôle comité/orga
+  getParticipantsController
+);
 module.exports = router;

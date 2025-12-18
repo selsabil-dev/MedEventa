@@ -7,6 +7,7 @@ const {
   updatePaymentStatus,
   generateBadge,
   getBadgeByCode,
+  getParticipants,
 } = require('../models/inscription.model');
 
 // Middleware qui applique la validation dynamique selon le profil
@@ -144,6 +145,31 @@ const getBadgeController = (req, res) => {
     });
   });
 };
+// GET /api/inscriptions/event/:eventId/participants?profil=PARTICIPANT
+const getParticipantsController = (req, res) => {
+  const { eventId } = req.params;
+  const profil = req.query.profil || null; // optionnel
+
+  getParticipants(eventId, profil, (err, rows) => {
+    if (err) {
+      return res.status(500).json({ message: 'Erreur serveur' });
+    }
+
+    const participants = rows.map((row) => ({
+      inscriptionId: row.inscription_id,
+      utilisateurId: row.utilisateur_id,
+      nom: row.nom,
+      prenom: row.prenom,
+      email: row.email,
+      profil: row.profil,
+      statut_paiement: row.statut_paiement,
+      badge: row.badge,
+      date_inscription: row.date_inscription,
+    }));
+
+    res.json({ eventId: Number(eventId), participants });
+  });
+};
 
 module.exports = {
   validateInscription,
@@ -152,4 +178,6 @@ module.exports = {
   updatePaymentStatusController,
   generateBadgeController,
   getBadgeController,
+  getParticipantsController,
+
 };
