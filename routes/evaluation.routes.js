@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 
 const { assignManually , getEvaluationFormController,
-  submitEvaluationController,} = require('../controllers/evaluation.controller');
+  submitEvaluationController,generateReportController,} = require('../controllers/evaluation.controller');
 const { assignManualValidation ,submitEvaluationValidation, } = require('../validators/evaluation.validators');
 const { verifyToken } = require('../middlewares/auth.middleware');
 const { requirePermission } = require('../middlewares/permissions');
@@ -40,5 +40,12 @@ router.post(
   requirePermission('evaluate_communications'),
   submitEvaluationValidation,
   submitEvaluationController
+);
+// POST /api/evaluations/proposition/:propositionId/generate-report (Phase 4)
+router.post(
+  '/proposition/:propositionId/generate-report',
+  verifyToken,
+  requirePermission('manage_evaluations'), // orga/admin seulement
+  generateReportController
 );
 module.exports = router;

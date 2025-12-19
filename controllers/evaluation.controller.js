@@ -177,7 +177,48 @@ const submitEvaluationController = (req, res) => {
     });
   });
 };
+// POST /api/evaluations/proposition/:propositionId/generate-report
+// Générer le rapport final d'une proposition (après toutes les évaluations)
+const generateReportController = (req, res) => {
+  const { propositionId } = req.params;
+
+  // Vérifier que la proposition existe
+  const sqlComm = `
+    SELECT id FROM communication WHERE id = ?
+  `;
+
+  db.query(sqlComm, [propositionId], (err, commRows) => {
+    if (err) {
+      console.error('Erreur vérif proposition:', err);
+      return res.status(500).json({ message: 'Erreur serveur' });
+    }
+    if (commRows.length === 0) {
+      return res.status(404).json({ message: 'Proposition non trouvée' });
+    }
+
+    // Générer le rapport
+    generateReport(propositionId, (err2, rapport) => {
+      if (err2) {
+        console.error('Erreur generateReport:', err2);
+        return res.status(500).json({ message: 'Erreur génération rapport' });
+      }
+
+      if (!rapport) {
+        return res.status(400).json({
+          message:
+            'Pas assez d\'évaluations complètes pour générer le rapport',
+        });
+      }
+
+      res.status(201).json({
+        message: 'Rapport généré avec succès',
+        propositionId,
+        rapport,
+      });
+    });
+  });
+};
 module.exports = {
   assignManually, getEvaluationFormController,
-  submitEvaluationController,
+  submitEvaluationController,generateReportController,
 };
