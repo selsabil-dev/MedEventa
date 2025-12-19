@@ -2,7 +2,12 @@
 const permissions = {
   SUPER_ADMIN: ['create_event', 'delete_user', 'view_all', 'manage_evaluations'],
   ORGANISATEUR: ['create_event', 'edit_event', 'manage_inscriptions', 'manage_evaluations'],
-  COMMUNICANT: ['submit_communication', 'view_own_communications','register_event'],
+  COMMUNICANT: [
+  'submit_communication',
+  'create_submission',
+  'view_own_communications',
+  'register_event'
+],
   PARTICIPANT: ['register_event', 'view_public_info'],
   MEMBRE_COMITE: ['evaluate_communications', 'view_comite'],
   INVITE: ['view_event_details','register_event'],
