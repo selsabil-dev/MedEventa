@@ -4,7 +4,7 @@ const db = require('../db');
 const createSubmission = (data, callback) => {
   const sql = `
     INSERT INTO communication
-      (titre, resume, type, fichier_pdf, etat, id_auteur_principal, evenement_id)
+      (titre, resume, type, fichier_pdf, etat, auteur_id, evenement_id)
     VALUES (?, ?, ?, ?, 'en_attente', ?, ?)
   `;
 
@@ -13,7 +13,7 @@ const createSubmission = (data, callback) => {
     data.resume,
     data.type,
     data.fichier_pdf,
-    data.id_auteur_principal,
+    data.auteur_id,        // ✅ auteur_id (colonne DB)
     data.evenement_id
   ];
 
