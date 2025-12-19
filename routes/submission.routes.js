@@ -15,4 +15,21 @@ router.post(
   submissionController.createSubmissionController
 );
 
+// PUT /api/events/submissions/:submissionId
+router.put(
+  '/submissions/:submissionId',
+  verifyToken,
+  requirePermission('create_submission'),
+  uploadSubmissionPdf.single('resumePdf'), // optionnel: si tu veux remplacer le PDF
+  submissionController.updateSubmissionController
+);
+
+// DELETE /api/events/submissions/:submissionId
+router.delete(
+  '/submissions/:submissionId',
+  verifyToken,
+  requirePermission('create_submission'),
+  submissionController.deleteSubmissionController
+);
+
 module.exports = router;
