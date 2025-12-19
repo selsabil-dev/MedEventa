@@ -1,7 +1,7 @@
 // controllers/evaluation.controller.js
 const { validationResult } = require('express-validator');
 const db = require('../db');
-const { assignManual } = require('../models/evaluation.model');
+const { assignManual , getEvaluationForm, submitEvaluation } = require('../models/evaluation.model');
 
 // POST /api/evaluations/event/:eventId/assign-manual
 // Body: { "propositionId": 3, "evaluateurIds": [1, 2, 5] }
@@ -80,7 +80,103 @@ const assignManually = (req, res) => {
     });
   });
 };
+// GET /api/evaluations/evaluation/:evaluationId/form
+// Récupérer le formulaire d'évaluation (pour l'évaluateur connecté)
+const getEvaluationFormController = (req, res) => {
+  const { evaluationId } = req.params;
+  const userId = req.user.id; // ID de l'évaluateur connecté
 
+  // Vérifier que l'évaluateur est bien assigné à cette évaluation
+  const sqlCheck = `
+    SELECT e.id, e.membre_comite_id
+    FROM evaluation e
+    JOIN membre_comite mc ON e.membre_comite_id = mc.id
+    WHERE e.id = ? AND mc.utilisateur_id = ?
+  `;
+
+  db.query(sqlCheck, [evaluationId, userId], (err, rows) => {
+    if (err) {
+      console.error('Erreur vérif assignation:', err);
+      return res.status(500).json({ message: 'Erreur serveur' });
+    }
+    if (rows.length === 0) {
+      return res.status(403).json({
+        message: "Vous n'êtes pas assigné à cette évaluation",
+      });
+    }
+
+    // Récupérer le formulaire
+    getEvaluationForm(evaluationId, (err2, formData) => {
+      if (err2) {
+        return res.status(500).json({ message: 'Erreur serveur' });
+      }
+      if (!formData) {
+        return res.status(404).json({ message: 'Évaluation non trouvée' });
+      }
+
+      res.json({
+        message: 'Formulaire d\'évaluation',
+        evaluation: formData,
+      });
+    });
+  });
+};
+
+// POST /api/evaluations/evaluation/:evaluationId/submit
+// Soumettre les scores et recommandation
+const submitEvaluationController = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { evaluationId } = req.params;
+  const userId = req.user.id;
+  const { pertinence, qualite_scientifique, originalite, commentaire, decision } =
+    req.body;
+
+  // Vérifier que l'évaluateur est bien assigné
+  const sqlCheck = `
+    SELECT e.id, e.membre_comite_id
+    FROM evaluation e
+    JOIN membre_comite mc ON e.membre_comite_id = mc.id
+    WHERE e.id = ? AND mc.utilisateur_id = ?
+  `;
+
+  db.query(sqlCheck, [evaluationId, userId], (err, rows) => {
+    if (err) {
+      console.error('Erreur vérif assignation:', err);
+      return res.status(500).json({ message: 'Erreur serveur' });
+    }
+    if (rows.length === 0) {
+      return res.status(403).json({
+        message: "Vous n'êtes pas assigné à cette évaluation",
+      });
+    }
+
+    // Soumettre l'évaluation
+    const scores = {
+      pertinence,
+      qualite_scientifique,
+      originalite,
+      commentaire,
+      decision,
+    };
+
+    submitEvaluation(evaluationId, scores, (err2, result) => {
+      if (err2) {
+        return res.status(500).json({ message: 'Erreur lors de la soumission' });
+      }
+
+      res.status(200).json({
+        message: 'Évaluation soumise avec succès',
+        evaluationId,
+        scores,
+      });
+    });
+  });
+};
 module.exports = {
-  assignManually,
+  assignManually, getEvaluationFormController,
+  submitEvaluationController,
 };
