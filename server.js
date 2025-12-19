@@ -8,6 +8,7 @@ const sessionRoutes = require('./routes/session.routes');
 const inscriptionRoutes = require('./routes/inscription.routes');
 const { verifyToken } = require('./middlewares/auth.middleware');
 const submissionRoutes = require('./routes/submission.routes');
+const evaluationRoutes = require('./routes/evaluation.routes');
 
 
 const app = express();
@@ -28,6 +29,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api', sessionRoutes);              // /api/events/:eventId/sessions etc.
 app.use('/api/inscriptions', inscriptionRoutes);
 app.use('/api/events', submissionRoutes);
+app.use('/api/evaluations', evaluationRoutes);
 
 // Route profil protégée
 app.get('/api/profile', verifyToken, (req, res) => {
