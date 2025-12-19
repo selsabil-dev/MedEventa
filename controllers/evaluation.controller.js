@@ -108,7 +108,8 @@ const getEvaluationFormController = (req, res) => {
     // Récupérer le formulaire
     getEvaluationForm(evaluationId, (err2, formData) => {
       if (err2) {
-        return res.status(500).json({ message: 'Erreur serveur' });
+        console.error('Erreur getEvaluationForm:', err2);  // ← AJOUTE CETTE LIGNE
+        return res.status(500).json({ message: 'Erreur serveur', error: err2.message });
       }
       if (!formData) {
         return res.status(404).json({ message: 'Évaluation non trouvée' });
