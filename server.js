@@ -8,7 +8,7 @@ const sessionRoutes = require('./routes/session.routes');
 const inscriptionRoutes = require('./routes/inscription.routes');
 const { verifyToken } = require('./middlewares/auth.middleware');
 const submissionRoutes = require('./routes/submission.routes');
-const submissionRoutes = require('./routes/submission.routes');
+
 
 const app = express();
 const port = process.env.PORT || 3000;
