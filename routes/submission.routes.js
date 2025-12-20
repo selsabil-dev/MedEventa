@@ -20,7 +20,7 @@ router.put(
   '/submissions/:submissionId',
   verifyToken,
   requirePermission('update_submission'),
-  uploadSubmissionPdf.single('resumePdf'), // si tu veux remplacer le PDF
+  uploadSubmissionPdf.single('resumePdf'),
   submissionController.updateSubmissionController
 );
 
