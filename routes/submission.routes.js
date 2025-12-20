@@ -31,6 +31,7 @@ router.delete(
   requirePermission('delete_submission'),
   submissionController.deleteSubmissionController
 );
+
 // PUT /api/events/submissions/:submissionId/status
 router.put(
   '/submissions/:submissionId/status',
@@ -38,4 +39,14 @@ router.put(
   requirePermission('decide_submission'),
   submissionController.updateStatusController
 );
+
+// ===== Phase 4: withdraw =====
+// POST /api/events/submissions/:submissionId/withdraw
+router.post(
+  '/submissions/:submissionId/withdraw',
+  verifyToken,
+  requirePermission('update_submission'), // ولا دير permission جديدة withdraw_submission
+  submissionController.withdrawController
+);
+
 module.exports = router;
