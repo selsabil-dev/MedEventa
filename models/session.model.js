@@ -7,7 +7,7 @@ const {
   assignCommunication,
   getProgram,
   getDetailedProgram,
-  updateSession,
+  updateSession, // vient du model
 } = require('../models/session.model');
 
 // ------------------------------------------------------
@@ -15,7 +15,6 @@ const {
 // POST /events/:eventId/sessions/create
 // ------------------------------------------------------
 const createSessionController = (req, res) => {
-  // validations express-validator
   const errors = validationResult(req);
   if (!errors || !errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -285,22 +284,6 @@ const updateSessionController = (req, res) => {
     });
   });
 };
-const updateSession = (sessionId, data, callback) => {
-  const { titre, horaire, salle, president_id } = data;
-  const sql = `
-    UPDATE session
-    SET titre = ?, horaire = ?, salle = ?, president_id = ?
-    WHERE id = ?
-  `;
-  db.query(
-    sql,
-    [titre, horaire, salle, president_id, sessionId],
-    (err, result) => {
-      if (err) return callback(err, 0);
-      callback(null, result.affectedRows);
-    }
-  );
-};
 
 module.exports = {
   createSessionController,
@@ -308,5 +291,4 @@ module.exports = {
   getProgramController,
   getDetailedProgramController,
   updateSessionController,
-  updateSession,
 };
