@@ -29,8 +29,8 @@ const createSession = (eventId, data, callback) => {
   );
 };
 
+// Attribuer une communication acceptée à une session
 const assignCommunication = (sessionId, communicationId, callback) => {
-  // On ne met à jour que si la communication est acceptée ET pas déjà attribuée
   const sql = `
     UPDATE communication
     SET session_id = ?
@@ -47,6 +47,67 @@ const assignCommunication = (sessionId, communicationId, callback) => {
     callback(null, result.affectedRows); // 1 si ok, 0 si rien mis à jour
   });
 };
+
+// Programme global par événement
+const getProgram = (eventId, callback) => {
+  const sql = `
+    SELECT
+      s.id AS session_id,
+      s.titre AS session_titre,
+      s.horaire,
+      s.salle,
+      u.nom AS president_nom,
+      u.prenom AS president_prenom,
+      c.id AS communication_id,
+      c.titre AS communication_titre
+    FROM session s
+    LEFT JOIN utilisateur u ON s.president_id = u.id
+    LEFT JOIN communication c ON c.session_id = s.id
+    WHERE s.evenement_id = ?
+    ORDER BY s.horaire ASC
+  `;
+
+  db.query(sql, [eventId], (err, rows) => {
+    if (err) {
+      console.error('Erreur getProgram:', err);
+      return callback(err, null);
+    }
+    callback(null, rows);
+  });
+};
+
+// Programme détaillé pour un jour précis
+const getDetailedProgram = (eventId, date, callback) => {
+  const sql = `
+    SELECT
+      s.id AS session_id,
+      s.titre AS session_titre,
+      s.horaire,
+      s.salle,
+      u.nom AS president_nom,
+      u.prenom AS president_prenom,
+      c.id AS communication_id,
+      c.titre AS communication_titre
+    FROM session s
+    LEFT JOIN utilisateur u ON s.president_id = u.id
+    LEFT JOIN communication c ON c.session_id = s.id
+    WHERE s.evenement_id = ?
+      AND DATE(s.horaire) = ?
+    ORDER BY s.horaire ASC
+  `;
+
+  db.query(sql, [eventId, date], (err, rows) => {
+    if (err) {
+      console.error('Erreur getDetailedProgram:', err);
+      return callback(err, null);
+    }
+    callback(null, rows);
+  });
+};
+
 module.exports = {
-  createSession,assignCommunication,
+  createSession,
+  assignCommunication,
+  getProgram,
+  getDetailedProgram,
 };

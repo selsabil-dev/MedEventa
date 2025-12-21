@@ -90,9 +90,9 @@ const assignCommunicationController = (req, res) => {
 
     assignCommunication(sessionId, communicationId, (err2, affected) => {
       if (err2) {
-        return res
-          .status(500)
-          .json({ message: "Erreur lors de l'attribution de la communication" });
+        return res.status(500).json({
+          message: "Erreur lors de l'attribution de la communication",
+        });
       }
       if (affected === 0) {
         return res.status(400).json({
