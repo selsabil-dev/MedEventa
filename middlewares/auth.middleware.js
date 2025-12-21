@@ -27,4 +27,7 @@ const requireRole = (roles) => (req, res, next) => {
   next();
 };
 
-module.exports = { verifyToken, requireRole };
+module.exports = { 
+  verifyToken, 
+  requireRole 
+};
