@@ -7,6 +7,7 @@ const {
   assignCommunicationController,
   getProgramController,
   getDetailedProgramController,
+  updateSessionController,      // ⬅️ importer
 } = require('../controllers/session.controller');
 
 const { createSessionValidation } = require('../validators/session.validators');
@@ -14,7 +15,6 @@ const { verifyToken } = require('../middlewares/auth.middleware');
 const { requirePermission } = require('../middlewares/permissions');
 
 // PHASE 1 : création de session
-// POST /events/:eventId/sessions/create
 router.post(
   '/events/:eventId/sessions/create',
   verifyToken,
@@ -24,7 +24,6 @@ router.post(
 );
 
 // PHASE 2 : affectation d’une communication à une session
-// POST /sessions/:sessionId/assign-communication
 router.post(
   '/sessions/:sessionId/assign-communication',
   verifyToken,
@@ -32,19 +31,19 @@ router.post(
   assignCommunicationController
 );
 
-// PHASE 3 : visualisation du programme (global)
-// GET /events/:eventId/program  (publique)
+// PHASE 3 : programme global
 router.get('/events/:eventId/program', getProgramController);
 
-// PHASE 3 : visualisation détaillée par jour
-// GET /events/:eventId/program/detailed?date=YYYY-MM-DD  (publique)
+// PHASE 3 : programme détaillé
 router.get('/events/:eventId/program/detailed', getDetailedProgramController);
-//phase 4 : update de program 
+
+// PHASE 4 : mise à jour de session
 router.put(
   '/sessions/:sessionId/update',
   verifyToken,
   requirePermission('manage_program'),
-  sessionController.updateSession
+  createSessionValidation,     // optionnel mais conseillé pour revalider titre/horaire/salle/president_id
+  updateSessionController
 );
 
 module.exports = router;

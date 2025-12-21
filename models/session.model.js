@@ -44,10 +44,9 @@ const assignCommunication = (sessionId, communicationId, callback) => {
       console.error('Erreur assignCommunication:', err);
       return callback(err, null);
     }
-    callback(null, result.affectedRows); // 1 si ok, 0 si rien mis à jour
+    callback(null, result.affectedRows);
   });
 };
-
 
 // Programme global par événement
 const getProgram = (eventId, callback) => {
@@ -106,9 +105,37 @@ const getDetailedProgram = (eventId, date, callback) => {
   });
 };
 
+// 🔹 Mise à jour d'une session (Phase 4)
+const updateSession = (sessionId, data, callback) => {
+  const { titre, horaire, salle, president_id } = data;
+
+  const sql = `
+    UPDATE session
+    SET
+      titre = ?,
+      horaire = ?,
+      salle = ?,
+      president_id = ?
+    WHERE id = ?
+  `;
+
+  db.query(
+    sql,
+    [titre, horaire, salle, president_id, sessionId],
+    (err, result) => {
+      if (err) {
+        console.error('Erreur updateSession:', err);
+        return callback(err, null);
+      }
+      callback(null, result.affectedRows);
+    }
+  );
+};
+
 module.exports = {
   createSession,
   assignCommunication,
   getProgram,
   getDetailedProgram,
+  updateSession,          // ⬅️ ne pas oublier d’exporter
 };
