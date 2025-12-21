@@ -7,9 +7,9 @@ const createSessionValidation = [
     .isISO8601()
     .withMessage('L\'horaire doit être une date valide (ISO8601)'),
   body('salle').notEmpty().withMessage('La salle est obligatoire'),
-  body('id_president')
+  body('president_id')
     .isInt()
-    .withMessage('id_president doit être un entier'),
+    .withMessage('president_id doit être un entier'),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
