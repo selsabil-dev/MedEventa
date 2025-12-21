@@ -39,5 +39,12 @@ router.get('/events/:eventId/program', getProgramController);
 // PHASE 3 : visualisation détaillée par jour
 // GET /events/:eventId/program/detailed?date=YYYY-MM-DD  (publique)
 router.get('/events/:eventId/program/detailed', getDetailedProgramController);
+//phase 4 : update de program 
+router.put(
+  '/sessions/:sessionId/update',
+  verifyToken,
+  requirePermission('manage_program'),
+  sessionController.updateSession
+);
 
 module.exports = router;
