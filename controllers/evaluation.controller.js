@@ -1,7 +1,15 @@
 // controllers/evaluation.controller.js
 const { validationResult } = require('express-validator');
 const db = require('../db');
-const { assignManual , getEvaluationForm, submitEvaluation ,generateReport, } = require('../models/evaluation.model');
+const {
+  assignManual,
+  getEvaluationForm,
+  submitEvaluation,
+  generateReport,
+  hasReportForProposition,
+  listEvaluationsModel,
+  listReportsModel,
+} = require('../models/evaluation.model');
 
 // POST /api/evaluations/event/:eventId/assign-manual
 // Body: { "propositionId": 3, "evaluateurIds": [1, 2, 5] }
@@ -80,6 +88,7 @@ const assignManually = (req, res) => {
     });
   });
 };
+
 // GET /api/evaluations/evaluation/:evaluationId/form
 // Récupérer le formulaire d'évaluation (pour l'évaluateur connecté)
 const getEvaluationFormController = (req, res) => {
@@ -108,15 +117,17 @@ const getEvaluationFormController = (req, res) => {
     // Récupérer le formulaire
     getEvaluationForm(evaluationId, (err2, formData) => {
       if (err2) {
-        console.error('Erreur getEvaluationForm:', err2);  // ← AJOUTE CETTE LIGNE
-        return res.status(500).json({ message: 'Erreur serveur', error: err2.message });
+        console.error('Erreur getEvaluationForm:', err2);
+        return res
+          .status(500)
+          .json({ message: 'Erreur serveur', error: err2.message });
       }
       if (!formData) {
         return res.status(404).json({ message: 'Évaluation non trouvée' });
       }
 
       res.json({
-        message: 'Formulaire d\'évaluation',
+        message: "Formulaire d'évaluation",
         evaluation: formData,
       });
     });
@@ -125,7 +136,7 @@ const getEvaluationFormController = (req, res) => {
 
 // POST /api/evaluations/evaluation/:evaluationId/submit
 // Soumettre les scores et recommandation
-const submitEvaluationController = (req, res) => {
+const submitEvaluationController = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -133,18 +144,23 @@ const submitEvaluationController = (req, res) => {
 
   const { evaluationId } = req.params;
   const userId = req.user.id;
-  const { pertinence, qualite_scientifique, originalite, commentaire, decision } =
-    req.body;
+  const {
+    pertinence,
+    qualite_scientifique,
+    originalite,
+    commentaire,
+    decision,
+  } = req.body;
 
   // Vérifier que l'évaluateur est bien assigné
   const sqlCheck = `
-    SELECT e.id, e.membre_comite_id
+    SELECT e.id, e.membre_comite_id, e.communication_id
     FROM evaluation e
     JOIN membre_comite mc ON e.membre_comite_id = mc.id
     WHERE e.id = ? AND mc.utilisateur_id = ?
   `;
 
-  db.query(sqlCheck, [evaluationId, userId], (err, rows) => {
+  db.query(sqlCheck, [evaluationId, userId], async (err, rows) => {
     if (err) {
       console.error('Erreur vérif assignation:', err);
       return res.status(500).json({ message: 'Erreur serveur' });
@@ -153,6 +169,22 @@ const submitEvaluationController = (req, res) => {
       return res.status(403).json({
         message: "Vous n'êtes pas assigné à cette évaluation",
       });
+    }
+
+    const communicationId = rows[0].communication_id;
+
+    // PHASE 5: lock simple
+    try {
+      const locked = await hasReportForProposition(communicationId);
+      if (locked) {
+        return res.status(400).json({
+          message:
+            'Les évaluations ne peuvent plus être modifiées (rapport généré).',
+        });
+      }
+    } catch (e) {
+      console.error('Erreur check rapport:', e);
+      return res.status(500).json({ message: 'Erreur serveur' });
     }
 
     // Soumettre l'évaluation
@@ -164,9 +196,11 @@ const submitEvaluationController = (req, res) => {
       decision,
     };
 
-    submitEvaluation(evaluationId, scores, (err2, result) => {
+    submitEvaluation(evaluationId, scores, (err2) => {
       if (err2) {
-        return res.status(500).json({ message: 'Erreur lors de la soumission' });
+        return res
+          .status(500)
+          .json({ message: 'Erreur lors de la soumission' });
       }
 
       res.status(200).json({
@@ -177,6 +211,7 @@ const submitEvaluationController = (req, res) => {
     });
   });
 };
+
 // POST /api/evaluations/proposition/:propositionId/generate-report
 // Générer le rapport final d'une proposition (après toutes les évaluations)
 const generateReportController = (req, res) => {
@@ -206,7 +241,7 @@ const generateReportController = (req, res) => {
       if (!rapport) {
         return res.status(400).json({
           message:
-            'Pas assez d\'évaluations complètes pour générer le rapport',
+            "Pas assez d'évaluations complètes pour générer le rapport",
         });
       }
 
@@ -218,7 +253,54 @@ const generateReportController = (req, res) => {
     });
   });
 };
+
+// PHASE 5: list evaluations with pagination
+const listEvaluations = (req, res) => {
+  const { page = 1, limit = 10, eventId, search } = req.query;
+
+  listEvaluationsModel(
+    {
+      page: Number(page),
+      limit: Number(limit),
+      eventId: eventId ? Number(eventId) : null,
+      search: search || null,
+    },
+    (err, data) => {
+      if (err) {
+        console.error('Erreur listEvaluations:', err);
+        return res.status(500).json({ message: 'Erreur serveur' });
+      }
+      res.json(data);
+    }
+  );
+};
+
+// PHASE 5: list reports with pagination
+const listReports = (req, res) => {
+  const { page = 1, limit = 10, eventId, search } = req.query;
+
+  listReportsModel(
+    {
+      page: Number(page),
+      limit: Number(limit),
+      eventId: eventId ? Number(eventId) : null,
+      search: search || null,
+    },
+    (err, data) => {
+      if (err) {
+        console.error('Erreur listReports:', err);
+        return res.status(500).json({ message: 'Erreur serveur' });
+      }
+      res.json(data);
+    }
+  );
+};
+
 module.exports = {
-  assignManually, getEvaluationFormController,
-  submitEvaluationController,generateReportController,
+  assignManually,
+  getEvaluationFormController,
+  submitEvaluationController,
+  generateReportController,
+  listEvaluations,
+  listReports,
 };

@@ -2,8 +2,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { assignManually , getEvaluationFormController,
-  submitEvaluationController,generateReportController,} = require('../controllers/evaluation.controller');
+const { assignManually , getEvaluationFormController,submitEvaluationController,generateReportController,} = require('../controllers/evaluation.controller');
 const { assignManualValidation ,submitEvaluationValidation, } = require('../validators/evaluation.validators');
 const { verifyToken } = require('../middlewares/auth.middleware');
 const { requirePermission } = require('../middlewares/permissions');
@@ -13,14 +12,6 @@ router.post(
   '/event/:eventId/assign-manual',
   verifyToken,
   requirePermission('manage_evaluations'),   // à ajouter dans permissions.js si pas encore fait
-  assignManualValidation,
-  assignManually
-);
-// POST /api/evaluations/event/:eventId/assign-manual (Phase 1)
-router.post(
-  '/event/:eventId/assign-manual',
-  verifyToken,
-  requirePermission('manage_evaluations'),
   assignManualValidation,
   assignManually
 );
@@ -47,5 +38,19 @@ router.post(
   verifyToken,
   requirePermission('manage_evaluations'), // orga/admin seulement
   generateReportController
+);
+// PHASE 5 – simple pagination for organiser
+router.get(
+  '/evaluations',
+  verifyToken,
+  requirePermission('manage_evaluations'),
+  require('../controllers/evaluation.controller').listEvaluations
+);
+
+router.get(
+  '/rapports',
+  verifyToken,
+  requirePermission('manage_evaluations'),
+  require('../controllers/evaluation.controller').listReports
 );
 module.exports = router;

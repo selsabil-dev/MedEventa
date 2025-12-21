@@ -2,17 +2,14 @@
 const db = require('../db');
 
 // Affectation MANUELLE d'une proposition à plusieurs membres du comité
-// eventId sert juste pour vérifier que la communication et les membres
-// appartiennent bien au bon événement (on pourra renforcer plus tard).
 const assignManual = (communicationId, evaluateurIds, callback) => {
-  // Préparer les valeurs pour INSERT multiple
   const values = evaluateurIds.map((membreComiteId) => [
     communicationId,
     membreComiteId,
-    null,   // note
-    null,   // commentaire
-    null,   // decision
-    null,   // date_evaluation
+    null, // note
+    null, // commentaire
+    null, // decision
+    null, // date_evaluation
   ]);
 
   const sql = `
@@ -32,13 +29,13 @@ const assignManual = (communicationId, evaluateurIds, callback) => {
       console.error('Erreur assignManual (evaluation):', err);
       return callback(err, null);
     }
-    // result.affectedRows = nb d'affectations créées [web:239]
     callback(null, {
       affectedRows: result.affectedRows,
-      insertedIdsStart: result.insertId, // premier id inséré
+      insertedIdsStart: result.insertId,
     });
   });
 };
+
 // Récupérer les détails de l'évaluation (formulaire) pour un évaluateur
 const getEvaluationForm = (evaluationId, callback) => {
   const sql = `
@@ -113,15 +110,15 @@ const submitEvaluation = (evaluationId, scores, callback) => {
         return callback(err, null);
       }
       if (result.affectedRows === 0) {
-        return callback(null, null); // évaluation non trouvée
+        return callback(null, null);
       }
       callback(null, result);
     }
   );
 };
+
 // Générer un rapport d'évaluation (agrège toutes les évaluations d'une proposition)
 const generateReport = (propositionId, callback) => {
-  // 1) Récupérer toutes les évaluations de cette proposition
   const sqlEvals = `
     SELECT 
       e.pertinence,
@@ -131,7 +128,7 @@ const generateReport = (propositionId, callback) => {
       e.decision
     FROM evaluation e
     WHERE e.communication_id = ?
-    AND e.pertinence IS NOT NULL
+      AND e.pertinence IS NOT NULL
   `;
 
   db.query(sqlEvals, [propositionId], (err, evals) => {
@@ -144,7 +141,6 @@ const generateReport = (propositionId, callback) => {
       return callback(null, null); // pas d'évaluations complètes
     }
 
-    // 2) Calculer les moyennes et les recommandations
     const moyPertinence =
       evals.reduce((sum, e) => sum + e.pertinence, 0) / evals.length;
     const moyQualite =
@@ -152,7 +148,6 @@ const generateReport = (propositionId, callback) => {
     const moyOriginalite =
       evals.reduce((sum, e) => sum + e.originalite, 0) / evals.length;
 
-    // Compter les décisions
     const decisions = evals.map((e) => e.decision);
     const decisionMajoritaire = decisions.sort(
       (a, b) =>
@@ -160,7 +155,6 @@ const generateReport = (propositionId, callback) => {
         decisions.filter((x) => x === b).length
     )[0];
 
-    // 3) Construire le rapport JSON
     const rapport = {
       proposition_id: propositionId,
       nombre_evaluateurs: evals.length,
@@ -176,13 +170,12 @@ const generateReport = (propositionId, callback) => {
       date_generation: new Date().toISOString(),
     };
 
-    // 4) Insérer le rapport en BD
     const sqlInsert = `
       INSERT INTO rapport_evaluation (proposition_id, contenu_rapport)
       VALUES (?, ?)
     `;
 
-    db.query(sqlInsert, [propositionId, JSON.stringify(rapport)], (err2, result) => {
+    db.query(sqlInsert, [propositionId, JSON.stringify(rapport)], (err2) => {
       if (err2) {
         console.error('Erreur generateReport (INSERT):', err2);
         return callback(err2, null);
@@ -191,7 +184,114 @@ const generateReport = (propositionId, callback) => {
     });
   });
 };
+
+// PHASE 5: check if a report exists (lock)
+const hasReportForProposition = (propositionId) => {
+  return new Promise((resolve, reject) => {
+    const sql = 'SELECT id FROM rapport_evaluation WHERE proposition_id = ?';
+    db.query(sql, [propositionId], (err, rows) => {
+      if (err) return reject(err);
+      resolve(rows.length > 0);
+    });
+  });
+};
+
+// PHASE 5: simple pagination for evaluations
+const listEvaluationsModel = ({ page, limit, eventId, search }, callback) => {
+  const offset = (page - 1) * limit;
+  const params = [];
+  let where = 'WHERE 1=1';
+
+  if (eventId) {
+    where += ' AND c.evenement_id = ?';
+    params.push(eventId);
+  }
+
+  if (search) {
+    where += ' AND c.titre LIKE ?';
+    params.push(`%${search}%`);
+  }
+
+  const sql = `
+    SELECT e.*, c.titre AS communication_titre
+    FROM evaluation e
+    JOIN communication c ON e.communication_id = c.id
+    ${where}
+    ORDER BY e.date_evaluation DESC
+    LIMIT ? OFFSET ?
+  `;
+  params.push(limit, offset);
+
+  db.query(sql, params, (err, rows) => {
+    if (err) return callback(err);
+
+    const countSql = `
+      SELECT COUNT(*) AS total
+      FROM evaluation e
+      JOIN communication c ON e.communication_id = c.id
+      ${where}
+    `;
+    db.query(countSql, params.slice(0, params.length - 2), (err2, countRows) => {
+      if (err2) return callback(err2);
+      callback(null, {
+        data: rows,
+        pagination: { page, limit, total: countRows[0].total },
+      });
+    });
+  });
+};
+
+// PHASE 5: simple pagination for reports
+const listReportsModel = ({ page, limit, eventId, search }, callback) => {
+  const offset = (page - 1) * limit;
+  const params = [];
+  let where = 'WHERE 1=1';
+
+  if (eventId) {
+    where += ' AND c.evenement_id = ?';
+    params.push(eventId);
+  }
+
+  if (search) {
+    where += ' AND c.titre LIKE ?';
+    params.push(`%${search}%`);
+  }
+
+  const sql = `
+    SELECT r.*, c.titre AS communication_titre
+    FROM rapport_evaluation r
+    JOIN communication c ON r.proposition_id = c.id
+    ${where}
+    ORDER BY r.date_generation DESC
+    LIMIT ? OFFSET ?
+  `;
+  params.push(limit, offset);
+
+  db.query(sql, params, (err, rows) => {
+    if (err) return callback(err);
+
+    const countSql = `
+      SELECT COUNT(*) AS total
+      FROM rapport_evaluation r
+      JOIN communication c ON r.proposition_id = c.id
+      ${where}
+    `;
+    db.query(countSql, params.slice(0, params.length - 2), (err2, countRows) => {
+      if (err2) return callback(err2);
+      callback(null, {
+        data: rows,
+        pagination: { page, limit, total: countRows[0].total },
+      });
+    });
+  });
+};
+
 module.exports = {
-  assignManual, getEvaluationForm,
-  submitEvaluation,generateReport,
+  assignManual,
+  getEvaluationForm,
+  submitEvaluation,
+  generateReport,
+  hasReportForProposition,
+  listEvaluationsModel,
+  listReportsModel,
 };
