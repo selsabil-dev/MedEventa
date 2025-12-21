@@ -16,11 +16,11 @@ const createSessionController = (req, res) => {
   }
 
   const { eventId } = req.params;
-  const { titre, horaire, salle, president_id } = req.body;
+  const { titre, horaire, salle, id_president } = req.body;
   const userId = req.user.id;
 
   const sqlCheck = `
-    SELECT id, organisateur_id
+    SELECT id, id_president
     FROM evenement
     WHERE id = ?
   `;
@@ -32,13 +32,13 @@ const createSessionController = (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Événement non trouvé' });
     }
-    if (rows[0].organisateur_id !== userId) {
+    if (rows[0].id_president !== userId) {
       return res.status(403).json({
         message: "Vous n'êtes pas l'organisateur de cet événement",
       });
     }
 
-    const data = { titre, horaire, salle, president_id };
+    const data = { titre, horaire, salle, id_president };
     createSession(eventId, data, (err2, sessionId) => {
       if (err2) {
         return res
@@ -68,7 +68,7 @@ const assignCommunicationController = (req, res) => {
   }
 
   const sqlCheck = `
-    SELECT s.id, s.evenement_id, e.organisateur_id
+    SELECT s.id, s.evenement_id, e.id_president
     FROM session s
     JOIN evenement e ON s.evenement_id = e.id
     WHERE s.id = ?
