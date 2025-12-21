@@ -1,88 +1,52 @@
+// models/session.model.js
 const db = require('../db');
 
 // Créer une session pour un événement
 const createSession = (eventId, data, callback) => {
-  const { titre, horaire, salle, president_id } = data;
+  const { titre, horaire, salle, id_president } = data;
+
   const sql = `
-    INSERT INTO session (evenement_id, titre, horaire, salle, president_id)
+    INSERT INTO session (
+      evenement_id,
+      titre,
+      horaire,
+      salle,
+      id_president
+    )
     VALUES (?, ?, ?, ?, ?)
   `;
-  db.query(sql, [eventId, titre, horaire, salle, president_id], (err, result) => {
+
+  db.query(
+    sql,
+    [eventId, titre, horaire, salle, id_president],
+    (err, result) => {
+      if (err) {
+        console.error('Erreur createSession:', err);
+        return callback(err, null);
+      }
+      callback(null, result.insertId);
+    }
+  );
+};
+
+const assignCommunication = (sessionId, communicationId, callback) => {
+  // On ne met à jour que si la communication est acceptée ET pas déjà attribuée
+  const sql = `
+    UPDATE communication
+    SET session_id = ?
+    WHERE id = ?
+      AND decision = 'accepter'
+      AND (session_id IS NULL OR session_id = 0)
+  `;
+
+  db.query(sql, [sessionId, communicationId], (err, result) => {
     if (err) {
-      console.error('Erreur création session :', err);
+      console.error('Erreur assignCommunication:', err);
       return callback(err, null);
     }
-    callback(null, result.insertId);
+    callback(null, result.affectedRows); // 1 si ok, 0 si rien mis à jour
   });
 };
-
-// Récupérer toutes les sessions d’un événement
-const getSessionsByEvent = (eventId, callback) => {
-  const sql = `
-    SELECT id, titre, horaire, salle, president_id
-    FROM session
-    WHERE evenement_id = ?
-    ORDER BY horaire ASC
-  `;
-  db.query(sql, [eventId], (err, results) => {
-    if (err) {
-      console.error('Erreur récupération sessions :', err);
-      return callback(err);
-    }
-    callback(null, results);
-  });
-};
-
-// Récupérer une session par id
-const getSessionById = (id, callback) => {
-  const sql = `
-    SELECT id, evenement_id, titre, horaire, salle, president_id
-    FROM session
-    WHERE id = ?
-  `;
-  db.query(sql, [id], (err, results) => {
-    if (err) {
-      console.error('Erreur récupération session :', err);
-      return callback(err, null);
-    }
-    if (results.length === 0) return callback(null, null);
-    callback(null, results[0]);
-  });
-};
-
-// Mettre à jour une session
-const updateSession = (id, data, callback) => {
-  const { titre, horaire, salle, president_id } = data;
-  const sql = `
-    UPDATE session
-    SET titre = ?, horaire = ?, salle = ?, president_id = ?
-    WHERE id = ?
-  `;
-  db.query(sql, [titre, horaire, salle, president_id, id], (err, result) => {
-    if (err) {
-      console.error('Erreur mise à jour session :', err);
-      return callback(err);
-    }
-    callback(null, result.affectedRows);
-  });
-};
-
-// Supprimer une session
-const deleteSession = (id, callback) => {
-  const sql = `DELETE FROM session WHERE id = ?`;
-  db.query(sql, [id], (err, result) => {
-    if (err) {
-      console.error('Erreur suppression session :', err);
-      return callback(err);
-    }
-    callback(null, result.affectedRows);
-  });
-};
-
 module.exports = {
-  createSession,
-  getSessionsByEvent,
-  getSessionById,
-  updateSession,
-  deleteSession,
+  createSession,assignCommunication,
 };
