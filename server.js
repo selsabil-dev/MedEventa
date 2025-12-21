@@ -6,7 +6,7 @@ const authRoutes = require('./routes/auth.routes');
 const eventRoutes = require('./routes/event.routes');
 const sessionRoutes = require('./routes/session.routes');
 const inscriptionRoutes = require('./routes/inscription.routes');
-const { verifyToken } = require('./middlewares/auth.middleware');
+const { verifyToken } = require('./middlewares/auth');
 const submissionRoutes = require('./routes/submission.routes');
 const evaluationRoutes = require('./routes/evaluation.routes');
 
