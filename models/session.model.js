@@ -3,7 +3,7 @@ const db = require('../db');
 
 // Créer une session pour un événement
 const createSession = (eventId, data, callback) => {
-  const { titre, horaire, salle, id_president } = data;
+  const { titre, horaire, salle, president_id } = data;
 
   const sql = `
     INSERT INTO session (
@@ -11,14 +11,14 @@ const createSession = (eventId, data, callback) => {
       titre,
       horaire,
       salle,
-      id_president
+      president_id
     )
     VALUES (?, ?, ?, ?, ?)
   `;
 
   db.query(
     sql,
-    [eventId, titre, horaire, salle, id_president],
+    [eventId, titre, horaire, salle, president_id],
     (err, result) => {
       if (err) {
         console.error('Erreur createSession:', err);
