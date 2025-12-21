@@ -10,7 +10,7 @@ const {
   getEventDetailsController,
 } = require('../controllers/event.controller');
 
-const { verifyToken } = require('../middlewares/auth');
+const { verifyToken } = require('../middlewares/auth.middlewares');
 const { hasPermission } = require('../middlewares/permissions');
 const { createEventValidation, validate } = require('../middlewares/event.validators');
 

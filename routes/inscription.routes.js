@@ -12,7 +12,7 @@ const {
   getParticipantsController,
 } = require('../controllers/inscription.controller');
 
-const { verifyToken } = require('../middlewares/auth');
+const { verifyToken } = require('../middlewares/auth.middlewares');
 const { requirePermission } = require('../middlewares/permissions');
 
 // POST /api/inscriptions/register/:eventId
