@@ -35,7 +35,7 @@ const assignCommunication = (sessionId, communicationId, callback) => {
     UPDATE communication
     SET session_id = ?
     WHERE id = ?
-      AND etat = 'accepter'
+      AND etat = 'acceptee'
       AND (session_id IS NULL OR session_id = 0)
   `;
 
@@ -47,6 +47,7 @@ const assignCommunication = (sessionId, communicationId, callback) => {
     callback(null, result.affectedRows); // 1 si ok, 0 si rien mis à jour
   });
 };
+
 
 // Programme global par événement
 const getProgram = (eventId, callback) => {
