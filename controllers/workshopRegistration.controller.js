@@ -8,7 +8,7 @@ const {
 
 const registerWorkshopController = (req, res) => {
   const workshopId = parseInt(req.params.workshopId, 10);
-  const userId = req.user.id; // JWT
+  const userId = req.user.id;
 
   registerToWorkshop(workshopId, userId, (err, result) => {
     if (err) return res.status(500).json({ message: 'Erreur serveur', error: err.message });
@@ -16,6 +16,9 @@ const registerWorkshopController = (req, res) => {
     if (!result.ok) {
       if (result.reason === 'WORKSHOP_NOT_FOUND') {
         return res.status(404).json({ message: 'Workshop introuvable' });
+      }
+      if (result.reason === 'WORKSHOP_PAST') {
+        return res.status(400).json({ message: 'Inscription refusée: workshop déjà passé' });
       }
       if (result.reason === 'WORKSHOP_FULL') {
         return res.status(400).json({ message: 'Workshop complet', capacity: result.capacity });

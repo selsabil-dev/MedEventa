@@ -16,13 +16,29 @@ const multer = require('multer');
 const { uploadWorkshopPdf } = require('../middlewares/uploadWorkshopPdf');
 const workshopSupportController = require('../controllers/workshopSupport.controller');
 
-
+// =======================
+// Phase 4: CONSULTATION
+// =======================
 
 // GET /api/events/:eventId/workshops
-router.get('/:eventId/workshops', workshopController.listWorkshops);
+router.get(
+  '/:eventId/workshops',
+  verifyToken,
+  requirePermission('view_workshops'),
+  workshopController.listWorkshops
+);
 
 // GET /api/events/workshops/:workshopId
-router.get('/workshops/:workshopId', workshopController.getWorkshopController);
+router.get(
+  '/workshops/:workshopId',
+  verifyToken,
+  requirePermission('view_workshops'),
+  workshopController.getWorkshopController
+);
+
+// =======================
+// Phase 4: CRUD WORKSHOP
+// =======================
 
 // POST /api/events/:eventId/workshops
 router.post(
@@ -50,7 +66,9 @@ router.delete(
   workshopController.deleteWorkshopController
 );
 
-// ===== Phase 2: inscriptions spécifiques workshops =====
+// =====================================
+// Phase 2/4: INSCRIPTIONS WORKSHOPS
+// =====================================
 
 // POST /api/events/workshops/:workshopId/register
 router.post(
@@ -75,7 +93,10 @@ router.get(
   requirePermission('manage_workshop_inscriptions'),
   workshopRegistrationController.listRegistrationsController
 );
-// ===== Phase 3: supports workshops =====
+
+// =======================
+// Phase 3/4: SUPPORTS
+// =======================
 
 // GET /api/events/workshops/:workshopId/supports
 router.get(
@@ -90,7 +111,7 @@ router.post(
   '/workshops/:workshopId/supports',
   verifyToken,
   requirePermission('manage_workshop_supports'),
-  uploadWorkshopPdf.single('pdf'), // pour type=pdf (et n'impacte pas JSON)
+  uploadWorkshopPdf.single('pdf'),
   workshopSupportController.addSupportController
 );
 
@@ -115,6 +136,5 @@ router.use((err, req, res, next) => {
   }
   next();
 });
-
 
 module.exports = router;

@@ -58,12 +58,13 @@ const permissions = {
   ],
 
   RESP_WORKSHOP: [
-    
-    'view_workshops',
-    'edit_workshop',                 
-    'manage_workshop_inscriptions',  
-    'manage_workshop_supports'       
-  ],
+  'view_workshops',
+  'create_workshop',         
+  'edit_workshop',
+  'delete_workshop',         
+  'manage_workshop_inscriptions',
+  'manage_workshop_supports'
+],
 };
 
 const hasPermission = (role, permission) => {

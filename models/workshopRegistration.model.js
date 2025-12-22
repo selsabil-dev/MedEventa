@@ -2,7 +2,14 @@
 const db = require('../db');
 
 const getWorkshopCapacity = (workshopId, callback) => {
-  const sql = 'SELECT id, nb_places FROM workshop WHERE id = ? LIMIT 1';
+  // Phase 4: on récupère date + flag "is_past"
+  const sql = `
+    SELECT id, nb_places, date,
+           (date < NOW()) AS is_past
+    FROM workshop
+    WHERE id = ?
+    LIMIT 1
+  `;
   db.query(sql, [workshopId], (err, rows) => {
     if (err) return callback(err);
     return callback(null, rows[0] || null);
@@ -18,27 +25,31 @@ const countRegistrations = (workshopId, callback) => {
 };
 
 const registerToWorkshop = (workshopId, userId, callback) => {
-  // 1) workshop exists + capacity
+  // 1) workshop exists + (phase 4) date + capacity
   getWorkshopCapacity(workshopId, (err, workshop) => {
     if (err) return callback(err);
     if (!workshop) return callback(null, { ok: false, reason: 'WORKSHOP_NOT_FOUND' });
 
+    // Phase 4: refuser si workshop passé
+    if (workshop.is_past) {
+      return callback(null, { ok: false, reason: 'WORKSHOP_PAST' });
+    }
+
     countRegistrations(workshopId, (err2, total) => {
       if (err2) return callback(err2);
 
-      // nb_places يمكن تكون NULL (نعتبروها illimité)
+      // nb_places peut être NULL (illimité)
       if (workshop.nb_places !== null && total >= workshop.nb_places) {
         return callback(null, { ok: false, reason: 'WORKSHOP_FULL', capacity: workshop.nb_places });
       }
 
-      // 2) insert (UNIQUE(participant_id, workshop_id) تمنع التكرار)
+      // 2) insert (UNIQUE(participant_id, workshop_id) empêche la duplication)
       const sql = `
         INSERT INTO inscription_workshop (participant_id, workshop_id)
         VALUES (?, ?)
       `;
       db.query(sql, [userId, workshopId], (err3, result) => {
         if (err3) {
-          // duplicate inscription
           if (err3.code === 'ER_DUP_ENTRY') {
             return callback(null, { ok: false, reason: 'ALREADY_REGISTERED' });
           }
@@ -57,7 +68,7 @@ const unregisterFromWorkshop = (workshopId, userId, callback) => {
   `;
   db.query(sql, [workshopId, userId], (err, result) => {
     if (err) return callback(err);
-    return callback(null, result.affectedRows); // 0 => pas inscrit
+    return callback(null, result.affectedRows);
   });
 };
 
@@ -81,7 +92,7 @@ module.exports = {
   unregisterFromWorkshop,
   listWorkshopRegistrations,
 
-  // helpers (optionnel)
+  // helpers
   getWorkshopCapacity,
   countRegistrations,
 };
