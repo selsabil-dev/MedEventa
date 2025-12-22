@@ -8,15 +8,10 @@ const sessionRoutes = require('./routes/session.routes');
 const inscriptionRoutes = require('./routes/inscription.routes');
 const { verifyToken } = require('./middlewares/auth.middleware');
 const submissionRoutes = require('./routes/submission.routes');
-
+const workshopRoutes = require('./routes/workshop.routes');
 
 const app = express();
 const port = process.env.PORT || 3000;
-
-const workshopRoutes = require('./routes/workshop.routes');
-app.use('/api/events', workshopRoutes);
-
-
 
 // Logger simple
 app.use((req, res, next) => {
@@ -24,7 +19,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Pour parser le JSON
+// Pour parser le JSON  -> AVANT toutes les routes
 app.use(express.json());
 
 // Routes principales
@@ -33,7 +28,9 @@ app.use('/api/events', eventRoutes);
 app.use('/api', sessionRoutes);              // /api/events/:eventId/sessions etc.
 app.use('/api/inscriptions', inscriptionRoutes);
 app.use('/api/events', submissionRoutes);
-app.use('/api/events', submissionRoutes);
+// (une seule fois suffit)
+app.use('/api/events', workshopRoutes);
+
 // Route profil protégée
 app.get('/api/profile', verifyToken, (req, res) => {
   res.json({
@@ -53,7 +50,6 @@ app.use((req, res) => {
     message: `Route non trouvée: ${req.method} ${req.originalUrl}`,
   });
 });
-
 
 // Lancement serveur
 app.listen(port, () => {
