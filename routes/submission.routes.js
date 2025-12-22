@@ -2,11 +2,7 @@
 const express = require('express');
 const router = express.Router();
 
-<<<<<<< HEAD
-const { verifyToken } = require('../middlewares/auth.middlewares');
-=======
-const { verifyToken, requirePermission } = require('../middlewares/auth.middleware');
->>>>>>> 474392008d5cf99afa343fff9ca5be470cad575f
+const { verifyToken } = require('../middlewares/auth.middleware');
 const { uploadSubmissionPdf } = require('../middlewares/uploadPdf');
 const submissionController = require('../controllers/submission.controller');
 

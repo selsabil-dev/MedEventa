@@ -7,13 +7,8 @@ const sessionRoutes = require('./routes/session.routes');
 const inscriptionRoutes = require('./routes/inscription.routes');
 const { verifyToken } = require('./middlewares/auth.middlewares');
 const submissionRoutes = require('./routes/submission.routes');
-<<<<<<< HEAD
 const evaluationRoutes = require('./routes/evaluation.routes');
 const questionRoutes = require('./routes/question.routes');
-=======
-const workshopRoutes = require('./routes/workshop.routes');
-
->>>>>>> 474392008d5cf99afa343fff9ca5be470cad575f
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -32,14 +27,8 @@ app.use('/api/events', eventRoutes);
 app.use('/api', sessionRoutes);             // => POST /api/events/:eventId/sessions/create
 app.use('/api/inscriptions', inscriptionRoutes);
 app.use('/api/events', submissionRoutes);
-<<<<<<< HEAD
 app.use('/api/evaluations', evaluationRoutes);
 app.use('/api', questionRoutes); // => POST /api/events/:eventId/questions/submit
-=======
-// (une seule fois suffit)
-app.use('/api/events', workshopRoutes);
-
->>>>>>> 474392008d5cf99afa343fff9ca5be470cad575f
 // Route profil protégée
 app.get('/api/profile', verifyToken, (req, res) => {
   res.json({
