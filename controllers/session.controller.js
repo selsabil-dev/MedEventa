@@ -1,6 +1,6 @@
 const db = require('../db');
 const { validationResult } = require('express-validator');
-const { createSession , assignCommunication} = require('../models/session.model');
+const { createSession , assignCommunication , getProgram ,getDetailedProgram} = require('../models/session.model');
 
 const createSessionController = (req, res) => {
   const errors = validationResult(req);
@@ -115,4 +115,90 @@ const assignCommunicationController = (req, res) => {
     });
   });
 };
-module.exports = { createSessionController ,assignCommunicationController,};
+// GET /events/:eventId/program
+const getProgramController = (req, res) => {
+  const eventId = req.params.eventId;
+
+  getProgram(eventId, (err, rows) => {
+    if (err) {
+      return res.status(500).json({ message: 'Erreur lors de la récupération du programme' });
+    }
+
+    const sessionsMap = {};
+
+    rows.forEach((row) => {
+      if (!sessionsMap[row.session_id]) {
+        sessionsMap[row.session_id] = {
+          id: row.session_id,
+          titre: row.session_titre,
+          horaire: row.session_horaire,
+          salle: row.session_salle,
+          president_id: row.session_president_id,
+          communications: [],
+        };
+      }
+
+      if (row.comm_id) {
+        sessionsMap[row.session_id].communications.push({
+          id: row.comm_id,
+          titre: row.comm_titre,
+          type: row.comm_type,
+          etat: row.comm_etat,
+        });
+      }
+    });
+
+    return res.status(200).json({
+      eventId: Number(eventId),
+      sessions: Object.values(sessionsMap),
+    });
+  });
+};
+
+// GET /events/:eventId/program/detailed?date=YYYY-MM-DD
+const getDetailedProgramController = (req, res) => {
+  const eventId = req.params.eventId;
+  const { date } = req.query;
+
+  if (!date) {
+    return res.status(400).json({ message: 'Paramètre date (YYYY-MM-DD) obligatoire' });
+  }
+
+  getDetailedProgram(eventId, date, (err, rows) => {
+    if (err) {
+      return res.status(500).json({ message: 'Erreur lors de la récupération du programme détaillé' });
+    }
+
+    const sessionsMap = {};
+
+    rows.forEach((row) => {
+      if (!sessionsMap[row.session_id]) {
+        sessionsMap[row.session_id] = {
+          id: row.session_id,
+          titre: row.session_titre,
+          horaire: row.session_horaire,
+          salle: row.session_salle,
+          president_id: row.session_president_id,
+          communications: [],
+        };
+      }
+
+      if (row.comm_id) {
+        sessionsMap[row.session_id].communications.push({
+          id: row.comm_id,
+          titre: row.comm_titre,
+          type: row.comm_type,
+          etat: row.comm_etat,
+        });
+      }
+    });
+
+    return res.status(200).json({
+      eventId: Number(eventId),
+      date,
+      sessions: Object.values(sessionsMap),
+    });
+  });
+};
+module.exports = { createSessionController ,assignCommunicationController,getProgramController,
+  getDetailedProgramController,};

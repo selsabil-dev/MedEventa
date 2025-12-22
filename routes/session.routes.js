@@ -5,7 +5,8 @@ const router = express.Router();
 const { verifyToken } = require('../middlewares/auth.middlewares');
 const { requirePermission } = require('../middlewares/permissions');
 const { createSessionValidation } = require('../validators/session.validators');
-const { createSessionController, assignCommunicationController } = require('../controllers/session.controller');
+const { createSessionController, assignCommunicationController ,getProgramController,
+  getDetailedProgramController,} = require('../controllers/session.controller');
 
 // Phase 1 : création de session scientifique
 // POST /events/:eventId/sessions/create
@@ -23,5 +24,9 @@ router.post(
   requirePermission('manage_program'),
   assignCommunicationController
 );
+// Phase 3 : programme global (public)
+router.get('/events/:eventId/program', getProgramController);
 
+// Phase 3 : programme détaillé par jour (public)
+router.get('/events/:eventId/program/detailed', getDetailedProgramController);
 module.exports = router;

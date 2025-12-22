@@ -41,7 +41,66 @@ const assignCommunication = (sessionId, communicationId, callback) => {
     callback(null, result.affectedRows);
   });
 };
+// Programme global d'un événement (toutes les sessions + communications)
+const getProgram = (eventId, callback) => {
+  const sql = `
+    SELECT
+      s.id               AS session_id,
+      s.titre            AS session_titre,
+      s.horaire          AS session_horaire,
+      s.salle            AS session_salle,
+      s.president_id     AS session_president_id,
+      c.id               AS comm_id,
+      c.titre            AS comm_titre,
+      c.type             AS comm_type,
+      c.etat             AS comm_etat
+    FROM session s
+    LEFT JOIN communication c
+      ON c.session_id = s.id
+    WHERE s.evenement_id = ?
+    ORDER BY s.horaire ASC, s.id ASC, c.id ASC
+  `;
+
+  db.query(sql, [eventId], (err, rows) => {
+    if (err) {
+      console.error('Erreur getProgram:', err);
+      return callback(err, null);
+    }
+    callback(null, rows);
+  });
+};
+
+// Programme détaillé pour un jour précis (YYYY-MM-DD)
+const getDetailedProgram = (eventId, date, callback) => {
+  const sql = `
+    SELECT
+      s.id               AS session_id,
+      s.titre            AS session_titre,
+      s.horaire          AS session_horaire,
+      s.salle            AS session_salle,
+      s.president_id     AS session_president_id,
+      c.id               AS comm_id,
+      c.titre            AS comm_titre,
+      c.type             AS comm_type,
+      c.etat             AS comm_etat
+    FROM session s
+    LEFT JOIN communication c
+      ON c.session_id = s.id
+    WHERE s.evenement_id = ?
+      AND DATE(s.horaire) = ?
+    ORDER BY s.horaire ASC, s.id ASC, c.id ASC
+  `;
+
+  db.query(sql, [eventId, date], (err, rows) => {
+    if (err) {
+      console.error('Erreur getDetailedProgram:', err);
+      return callback(err, null);
+    }
+    callback(null, rows);
+  });
+};
 
 module.exports = {
-  createSession, assignCommunication,
+  createSession, assignCommunication,getProgram,
+  getDetailedProgram,
 };
