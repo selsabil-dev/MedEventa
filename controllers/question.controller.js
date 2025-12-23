@@ -58,16 +58,16 @@ const submitQuestionController = (req, res) => {
 // même helper que tout à l’heure pour vérifier session active
 const doesQuestionExist = (questionId, callback) => {
   const sql = `
-    SELECT q.id
-    FROM question q 
-    WHERE q.id = ?
+    SELECT id
+    FROM question
+    WHERE id = ?
   `;
   db.query(sql, [questionId], (err, results) => {
     if (err) return callback(err);
-    if (results.length === 0) return callback(null, false);
+    if (results.length === 0) return callback(null, false); // question inexistante
     callback(null, true);
   });
-};
+}
 
 const voteQuestionController = (req, res) => {
   const questionId = parseInt(req.params.questionId, 10);
