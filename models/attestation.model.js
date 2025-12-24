@@ -1,22 +1,20 @@
 // models/attestation.model.js
-const db = require('../db');   // ✅ هذا الصحيح في مشروعك
+const db = require('../db'); // ✅ هذا الصحيح في مشروعك
 
-const crypto = require('crypto');
-
-// data = { evenementId, utilisateurId, type, fichierPdf }
+// data = { evenementId, utilisateurId, type, fichierPdf, uniqueCode }
 function createAttestation(data, callback) {
-  const dateGeneration = new Date();
-
+  // ✅ نخلي MySQL يحط التاريخ (DATE) مباشرة
   const sql = `
-    INSERT INTO attestation (utilisateur_id, evenement_id, type, date_generation, fichier_pdf)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO attestation (utilisateur_id, evenement_id, type, date_generation, fichier_pdf, unique_code)
+    VALUES (?, ?, ?, CURRENT_DATE, ?, ?)
   `;
+
   const params = [
     data.utilisateurId,
     data.evenementId,
     data.type,
-    dateGeneration,
-    data.fichierPdf
+    data.fichierPdf,
+    data.uniqueCode || null // ✅ يسمح NULL و UNIQUE ما يمنعش NULLs [web:196]
   ];
 
   db.query(sql, params, (err, result) => {
@@ -27,9 +25,11 @@ function createAttestation(data, callback) {
       utilisateur_id: data.utilisateurId,
       evenement_id: data.evenementId,
       type: data.type,
-      date_generation: dateGeneration,
-      fichier_pdf: data.fichierPdf
+      date_generation: new Date(), // display فقط (DB راهي CURRENT_DATE)
+      fichier_pdf: data.fichierPdf,
+      unique_code: data.uniqueCode || null
     };
+
     callback(null, created);
   });
 }

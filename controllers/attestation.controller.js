@@ -1,7 +1,7 @@
 // controllers/attestation.controller.js
 const path = require('path');
 const fs = require('fs');
-const PDFDocument = require('pdfkit'); // npm install pdfkit
+const PDFDocument = require('pdfkit'); // (خليه إذا تحب، بصح ما بقيناش نحتاجوه هنا)
 const { validationResult } = require('express-validator');
 
 const {
@@ -18,16 +18,22 @@ const {
   hasAcceptedCommunication,
   isMembreComiteForEvent,
   isOrganisateurForEvent,
-  isEventFinished, 
+  isEventFinished,
 } = require('../utils/attestationEligibility');
 
+const AttestationService = require("../services/attestation.service");
 
+// (هذا غير بقايا من Phase 2، تقدر تخليه، بصح Phase 3 تولي service تتكفل بالدوسي)
+// انت عندك داخل project root/uploads/attestations موجود أصلاً
 const ATTESTATIONS_DIR = path.join(__dirname, '..', 'uploads', 'attestations');
-
 if (!fs.existsSync(ATTESTATIONS_DIR)) {
   fs.mkdirSync(ATTESTATIONS_DIR, { recursive: true });
 }
 
+/**
+ * (قديم) generateAttestationPdf داخل controller
+ * Phase 3 ما بقيناش نستعملوه، نخلّيه فقط باش ما يكسرش حاجة عندك.
+ */
 function generateAttestationPdf({ filename, user, event, type }, callback) {
   const filePath = path.join(ATTESTATIONS_DIR, filename);
 
@@ -111,15 +117,19 @@ function checkEligibility(evenementId, utilisateurId, type, callback) {
   return callback(null, { ok: false, reason: 'TYPE_INVALIDE' });
 }
 
-
-// POST /api/attestations/me/generate
+/**
+ * ============================
+ * Phase 3: PDF unique + stockage
+ * ============================
+ * POST /api/attestations/me/generate
+ */
 function generateMyAttestation(req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const utilisateurId = req.user.id; // { id, email, role } depuis auth.middleware
+  const utilisateurId = req.user.id;
   const { evenementId, type } = req.body;
 
   // 1) vérifier si attestation existe déjà
@@ -162,33 +172,112 @@ function generateMyAttestation(req, res) {
           });
         }
 
-        // 4) charger infos user + event
-        getUserAndEventInfo(evenementId, utilisateurId, (infoErr, data) => {
-          if (infoErr) {
-            return res.status(500).json({
-              message: 'Erreur chargement infos',
-              error: infoErr.message
-            });
-          }
+        // 4) Phase 3: توليد PDF عبر service (uniqueCode + stockage منظم)
+        AttestationService.generateAttestationPdf({
+          eventId: evenementId,
+          userId: utilisateurId,
+          type
+        })
+          .then(({ pdfPath, uniqueCode }) => {
+            const attData = {
+              evenementId,
+              utilisateurId,
+              type,
+              fichierPdf: pdfPath,
+              uniqueCode // ⚠️ model لازم يدعمو (أو تجاهلو مؤقتاً)
+            };
 
-          const { user, event } = data;
-          const filename = `attestation_${evenementId}_${utilisateurId}_${type}.pdf`;
-
-          generateAttestationPdf(
-            { filename, user, event, type },
-            (pdfErr, filePath) => {
-              if (pdfErr) {
+            // 5) إنشاء attestation في DB (insert)
+            createAttestation(attData, (createErr, created) => {
+              if (createErr) {
                 return res.status(500).json({
-                  message: 'Erreur génération PDF',
-                  error: pdfErr
+                  message: 'Erreur création attestation',
+                  error: createErr
                 });
               }
 
+              return res.status(201).json({
+                message: 'Attestation générée',
+                attestation: created
+              });
+            });
+          })
+          .catch((pdfErr) => {
+            return res.status(500).json({
+              message: 'Erreur génération PDF (service)',
+              error: pdfErr.message || pdfErr
+            });
+          });
+      });
+    });
+  });
+}
+
+/**
+ * Phase 3: download (وإذا ماكانش يولّد)
+ * GET /api/attestations/me/download?evenementId=&type=
+ */
+function downloadMyAttestation(req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const utilisateurId = req.user.id;
+  const { evenementId, type } = req.query;
+
+  // 0) type validate سريع (باش ما ندخلوش للـ DB بلا لازمة)
+  const allowed = ['participant', 'communicant', 'membre_comite', 'organisateur'];
+  if (!allowed.includes(type)) {
+    return res.status(400).json({ message: 'Type invalide', reason: 'TYPE_INVALIDE' });
+  }
+
+  // 1) نجيب attestation من DB
+  getAttestationByUser(evenementId, utilisateurId, type, (err, attestation) => {
+    if (err) {
+      return res.status(500).json({ message: 'Erreur serveur', error: err });
+    }
+
+    // 2) إذا ماكانتش attestation → نقدر نولدها ثم نحمّلها (Phase 3)
+    if (!attestation) {
+      // لازم نفس شروط Phase 2
+      isEventFinished(evenementId, (evErr, evResult) => {
+        if (evErr) {
+          return res.status(500).json({ message: 'Erreur vérification événement', error: evErr });
+        }
+        if (!evResult.ok && evResult.reason === 'EVENT_NOT_FOUND') {
+          return res.status(404).json({ message: 'Événement introuvable' });
+        }
+        if (!evResult.ok && evResult.reason === 'EVENT_NOT_FINISHED') {
+          return res.status(403).json({
+            message: 'Attestation non disponible avant la fin de l’événement',
+            reason: 'EVENT_NOT_FINISHED'
+          });
+        }
+
+        checkEligibility(evenementId, utilisateurId, type, (eligErr, result) => {
+          if (eligErr) {
+            return res.status(500).json({ message: 'Erreur serveur', error: eligErr });
+          }
+          if (!result.ok) {
+            return res.status(403).json({
+              message: 'Utilisateur non éligible pour ce type d’attestation',
+              reason: result.reason
+            });
+          }
+
+          AttestationService.generateAttestationPdf({
+            eventId: evenementId,
+            userId: utilisateurId,
+            type
+          })
+            .then(({ pdfPath, uniqueCode }) => {
               const attData = {
                 evenementId,
                 utilisateurId,
                 type,
-                fichierPdf: filePath
+                fichierPdf: pdfPath,
+                uniqueCode
               };
 
               createAttestation(attData, (createErr, created) => {
@@ -199,49 +288,40 @@ function generateMyAttestation(req, res) {
                   });
                 }
 
-                return res.status(201).json({
-                  message: 'Attestation générée',
-                  attestation: created
-                });
+                if (!fs.existsSync(pdfPath)) {
+                  return res.status(404).json({ message: 'Fichier PDF introuvable sur le serveur' });
+                }
+
+                return res.download(pdfPath, `attestation_${type}.pdf`); // téléchargement [web:222]
               });
-            }
-          );
+            })
+            .catch((pdfErr) => {
+              return res.status(500).json({
+                message: 'Erreur génération PDF (service)',
+                error: pdfErr.message || pdfErr
+              });
+            });
         });
       });
-    });
-  });
-}
 
-
-// GET /api/attestations/me/download?evenementId=&type=
-function downloadMyAttestation(req, res) {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const utilisateurId = req.user.id;
-  const { evenementId, type } = req.query;
-
-  getAttestationByUser(evenementId, utilisateurId, type, (err, attestation) => {
-    if (err) {
-      return res.status(500).json({ message: 'Erreur serveur', error: err });
-    }
-    if (!attestation) {
-      return res.status(404).json({ message: 'Attestation introuvable' });
+      return;
     }
 
+    // 3) attestation موجودة → حمل الملف من fichier_pdf
     const filePath = attestation.fichier_pdf;
 
-    if (!fs.existsSync(filePath)) {
+    if (!filePath || !fs.existsSync(filePath)) {
       return res.status(404).json({ message: 'Fichier PDF introuvable sur le serveur' });
     }
 
-    res.download(filePath, `attestation_${type}.pdf`);
+    return res.download(filePath, `attestation_${type}.pdf`); // téléchargement [web:222]
   });
 }
 
-// POST /api/attestations/admin/generate
+/**
+ * POST /api/attestations/admin/generate
+ * Phase 3: نفس generateMyAttestation لكن لadmin
+ */
 function generateAttestationForUser(req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -277,7 +357,7 @@ function generateAttestationForUser(req, res) {
         });
       }
 
-      // 2) (optionnel) vérifier l’éligibilité aussi pour l’admin
+      // 2) vérifier l’éligibilité
       checkEligibility(evenementId, utilisateurId, type, (eligErr, result) => {
         if (eligErr) {
           return res.status(500).json({ message: 'Erreur serveur', error: eligErr });
@@ -289,56 +369,45 @@ function generateAttestationForUser(req, res) {
           });
         }
 
-        // 3) charger infos user + event
-        getUserAndEventInfo(evenementId, utilisateurId, (infoErr, data) => {
-          if (infoErr) {
-            return res.status(500).json({
-              message: 'Erreur chargement infos',
-              error: infoErr.message
-            });
-          }
+        // 3) Phase 3 service
+        AttestationService.generateAttestationPdf({
+          eventId: evenementId,
+          userId: utilisateurId,
+          type
+        })
+          .then(({ pdfPath, uniqueCode }) => {
+            const attData = {
+              evenementId,
+              utilisateurId,
+              type,
+              fichierPdf: pdfPath,
+              uniqueCode
+            };
 
-          const { user, event } = data;
-          const filename = `attestation_${evenementId}_${utilisateurId}_${type}.pdf`;
-
-          generateAttestationPdf(
-            { filename, user, event, type },
-            (pdfErr, filePath) => {
-              if (pdfErr) {
+            createAttestation(attData, (createErr, created) => {
+              if (createErr) {
                 return res.status(500).json({
-                  message: 'Erreur génération PDF',
-                  error: pdfErr
+                  message: 'Erreur création attestation',
+                  error: createErr
                 });
               }
 
-              const attData = {
-                evenementId,
-                utilisateurId,
-                type,
-                fichierPdf: filePath
-              };
-
-              createAttestation(attData, (createErr, created) => {
-                if (createErr) {
-                  return res.status(500).json({
-                    message: 'Erreur création attestation',
-                    error: createErr
-                  });
-                }
-
-                return res.status(201).json({
-                  message: 'Attestation générée (admin)',
-                  attestation: created
-                });
+              return res.status(201).json({
+                message: 'Attestation générée (admin)',
+                attestation: created
               });
-            }
-          );
-        });
+            });
+          })
+          .catch((pdfErr) => {
+            return res.status(500).json({
+              message: 'Erreur génération PDF (service)',
+              error: pdfErr.message || pdfErr
+            });
+          });
       });
     });
   });
 }
-
 
 // GET /api/attestations/evenement/:evenementId
 function listEventAttestations(req, res) {
