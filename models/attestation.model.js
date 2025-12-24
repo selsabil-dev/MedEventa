@@ -1,5 +1,6 @@
 // models/attestation.model.js
-const db = require('../config/db');
+const db = require('../db');   // ✅ هذا الصحيح في مشروعك
+
 const crypto = require('crypto');
 
 // data = { evenementId, utilisateurId, type, fichierPdf }
