@@ -9,7 +9,7 @@ const {
 
 const { testNotificationValidation } = require('../validators/notification.validators');
 
-const { verifyToken } = require('../middleware/authJwt'); // adapte comme pour messages
+const { verifyToken } = require('../middlewares/auth.middlewares'); 
 
 // Route de test pour créer une notif à la main
 router.post('/notifications/test', verifyToken, testNotificationValidation, createTestNotification);
