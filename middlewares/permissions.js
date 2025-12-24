@@ -13,7 +13,8 @@ const permissions = {
 
     // ✅ ajout attestations
     'generate_attestation',
-    'view_attestations'
+    'view_attestations',
+    'view_stats'
   ],
 
   ORGANISATEUR: [
@@ -29,7 +30,8 @@ const permissions = {
 
     // ✅ ajout attestations
     'generate_attestation',
-    'view_attestations'
+    'view_attestations',
+    'view_stats'
   ],
 
   COMMUNICANT: [
