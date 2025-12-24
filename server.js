@@ -1,14 +1,15 @@
 // server.js
 require('dotenv').config();
 const express = require('express');
-
 const authRoutes = require('./routes/auth.routes');
 const eventRoutes = require('./routes/event.routes');
 const sessionRoutes = require('./routes/session.routes');
 const inscriptionRoutes = require('./routes/inscription.routes');
-const { verifyToken } = require('./middlewares/auth.middleware');
+const { verifyToken } = require('./middlewares/auth.middlewares');
 const submissionRoutes = require('./routes/submission.routes');
-const workshopRoutes = require('./routes/workshop.routes');
+const evaluationRoutes = require('./routes/evaluation.routes');
+const questionRoutes = require('./routes/question.routes');
+const surveyRoutes = require('./routes/survey.routes');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -28,14 +29,11 @@ app.use(express.json());
 // Routes principales
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
-app.use('/api', sessionRoutes);              // /api/events/:eventId/sessions etc.
+app.use('/api', sessionRoutes);             // => POST /api/events/:eventId/sessions/create
 app.use('/api/inscriptions', inscriptionRoutes);
 app.use('/api/events', submissionRoutes);
+// (une seule fois suffit)
 app.use('/api/events', workshopRoutes);
-app.use('/api/attestations', attestationRoutes);
-
-// ✅ غير حركنا هذا السطر للفوق
-app.use('/api', statsRoutes);
 
 // Route profil protégée
 app.get('/api/profile', verifyToken, (req, res) => {

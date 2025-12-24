@@ -2,12 +2,17 @@
 const express = require('express');
 const router = express.Router();
 
-const { register, validateInscription ,
+const {
+  register,
+  validateInscription,
   getPaymentStatusController,
   updatePaymentStatusController,
-generateBadgeController,
-  getBadgeController,getParticipantsController, } = require('../controllers/inscription.controller');
-const { verifyToken } = require('../middlewares/auth.middleware');
+  generateBadgeController,
+  getBadgeController,
+  getParticipantsController,
+} = require('../controllers/inscription.controller');
+
+const { verifyToken } = require('../middlewares/auth.middlewares');
 const { requirePermission } = require('../middlewares/permissions');
 
 // POST /api/inscriptions/register/:eventId
@@ -18,21 +23,23 @@ router.post(
   validateInscription,
   register
 );
-// GET /api/inscriptions/:inscriptionId/payment-status  (user connecté)
+
+// GET /api/inscriptions/:inscriptionId/payment-status (user connecté)
 router.get(
   '/:inscriptionId/payment-status',
   verifyToken,
   getPaymentStatusController
 );
 
-// PUT /api/inscriptions/:inscriptionId/payment-status  (admin/orga ONLY)
+// PUT /api/inscriptions/:inscriptionId/payment-status (admin/orga ONLY)
 router.put(
   '/:inscriptionId/payment-status',
   verifyToken,
-  requirePermission('manage_inscriptions'), // ou autre permission pour ORGA
+  requirePermission('manage_inscriptions'),
   updatePaymentStatusController
 );
-// POST /api/inscriptions/:inscriptionId/generate-badge  (orga/admin)
+
+// POST /api/inscriptions/:inscriptionId/generate-badge (orga/admin)
 router.post(
   '/:inscriptionId/generate-badge',
   verifyToken,
@@ -40,17 +47,19 @@ router.post(
   generateBadgeController
 );
 
-// GET /api/inscriptions/badge/:code  (afficher / vérifier le badge)
+// GET /api/inscriptions/badge/:code (afficher / vérifier le badge)
 router.get(
   '/badge/:code',
   verifyToken,
   getBadgeController
 );
+
 // GET /api/inscriptions/event/:eventId/participants?profil=COMMUNICANT
 router.get(
   '/event/:eventId/participants',
   verifyToken,
-  requirePermission('manage_inscriptions'), // ou rôle comité/orga
+  requirePermission('manage_inscriptions'),
   getParticipantsController
 );
+
 module.exports = router;

@@ -1,4 +1,4 @@
-// middlewares/permissions.js
+// middleware/permissions.js
 const permissions = {
   SUPER_ADMIN: [
     'create_event', 'delete_user', 'view_all', 'manage_evaluations',
@@ -75,6 +75,13 @@ const permissions = {
   'manage_workshop_inscriptions',
   'manage_workshop_supports'
 ],
+  SUPER_ADMIN: ['create_event', 'delete_user', 'view_all', 'manage_evaluations', 'manage_program','manage_event',],
+  ORGANISATEUR: ['create_event', 'edit_event', 'manage_inscriptions', 'manage_evaluations', 'manage_program','manage_event',],
+  COMMUNICANT: ['submit_communication', 'view_own_communications', 'register_event'],
+  PARTICIPANT: ['register_event', 'view_public_info'],
+  MEMBRE_COMITE: ['evaluate_communications', 'view_comite'],
+  INVITE: ['view_event_details', 'register_event'],
+  RESP_WORKSHOP: ['manage_workshop'],
 };
 
 const hasPermission = (role, permission) => {

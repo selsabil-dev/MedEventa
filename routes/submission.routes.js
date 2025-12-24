@@ -2,10 +2,10 @@
 const express = require('express');
 const router = express.Router();
 
-const { verifyToken, requirePermission } = require('../middlewares/auth.middleware');
+const { verifyToken } = require('../middlewares/auth.middleware');
 const { uploadSubmissionPdf } = require('../middlewares/uploadPdf');
 const submissionController = require('../controllers/submission.controller');
-
+const { requirePermission } = require('../middlewares/permissions');
 // POST /api/events/:eventId/submissions
 router.post(
   '/:eventId/submissions',
