@@ -62,9 +62,45 @@ const isOrganisateurForEvent = (evenementId, userId, callback) => {
   });
 };
 
+// Événement terminé ? (date_fin < maintenant)
+const isEventFinished = (evenementId, callback) => {
+  const sql = `
+    SELECT date_fin
+    FROM evenement
+    WHERE id = ?
+    LIMIT 1
+  `;
+  db.query(sql, [evenementId], (err, rows) => {
+    if (err) return callback(err);
+    if (!rows || rows.length === 0) {
+      return callback(null, { ok: false, reason: 'EVENT_NOT_FOUND' });
+    }
+
+    const dateFin = rows[0].date_fin;
+    if (!dateFin) {
+      // pas de date_fin => on considère ouvert
+      return callback(null, { ok: true, finished: false });
+    }
+
+    const now = new Date();
+    const fin = new Date(dateFin);
+
+    if (now >= fin) {
+      return callback(null, { ok: true, finished: true });
+    } else {
+      return callback(null, {
+        ok: false,
+        finished: false,
+        reason: 'EVENT_NOT_FINISHED'
+      });
+    }
+  });
+};
+
 module.exports = {
   isParticipantInscrit,
   hasAcceptedCommunication,
   isMembreComiteForEvent,
   isOrganisateurForEvent,
+  isEventFinished,
 };
