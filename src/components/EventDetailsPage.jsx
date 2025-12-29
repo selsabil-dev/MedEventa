@@ -51,6 +51,7 @@ import EventSummarySection from "./EventDetailsPage/EventSummarySection";
 import EventProgramSection from "./EventDetailsPage/EventProgramSection";
 import EventCallSection from "./EventDetailsPage/EventCallSection";
 import EventQASection from "./EventDetailsPage/EventQASection";
+import EventFeedbackSection from "./EventDetailsPage/EventFeedbackSection"; // Add this import
 
 const EventDetailsPage = () => {
   const { id } = useParams();
@@ -132,6 +133,13 @@ const EventDetailsPage = () => {
   const [submittingQuestion, setSubmittingQuestion] = useState(false);
   const [questionToDelete, setQuestionToDelete] = useState(null); // For delete confirmation
   const [eventDetails, setEventDetails] = useState(null); // Full event details from API
+
+  // Feedback States
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
 
   const badgeRef = useRef(null);
 
@@ -375,6 +383,62 @@ const EventDetailsPage = () => {
       setQuestionError("Failed to delete question. Please try again.");
       setTimeout(() => setQuestionError(""), 3000);
       setQuestionToDelete(null);
+    }
+  };
+
+  // Submit feedback
+  const handleSubmitFeedback = async (e) => {
+    e.preventDefault();
+    setFeedbackError("");
+
+    if (!currentUser) {
+      setFeedbackError("Please log in to submit feedback");
+      return;
+    }
+
+    if (feedbackRating === 0) {
+      setFeedbackError("Please select a rating");
+      return;
+    }
+
+    if (!feedbackComment.trim()) {
+      setFeedbackError("Please enter your feedback comment");
+      return;
+    }
+
+    try {
+      setLoadingFeedback(true);
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `/api/events/${id}/feedback`,
+        {
+          rating: feedbackRating,
+          comment: feedbackComment.trim(),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 201) {
+        setFeedbackSubmitted(true);
+        // Reset form
+        setFeedbackRating(0);
+        setFeedbackComment("");
+        setTimeout(() => setFeedbackSubmitted(false), 5000);
+      }
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      const errorMsg =
+        error.response?.data?.message ||
+        error.response?.data?.errors?.[0]?.msg ||
+        "Failed to submit feedback. Please try again.";
+      setFeedbackError(errorMsg);
+    } finally {
+      setLoadingFeedback(false);
     }
   };
 
@@ -1235,23 +1299,37 @@ const EventDetailsPage = () => {
 
       case "qa":
         return (
-          <EventQASection
-            currentUser={currentUser}
-            questionText={questionText}
-            setQuestionText={setQuestionText}
-            questionError={questionError}
-            setQuestionError={setQuestionError}
-            questionSuccess={questionSuccess}
-            submittingQuestion={submittingQuestion}
-            handleSubmitQuestion={handleSubmitQuestion}
-            questionSort={questionSort}
-            setQuestionSort={setQuestionSort}
-            loadingQuestions={loadingQuestions}
-            sortedQuestions={sortedQuestions}
-            questionLikes={questionLikes}
-            handleLikeQuestion={handleLikeQuestion}
-            confirmDeleteQuestion={confirmDeleteQuestion}
-          />
+          <>
+            <EventQASection
+              currentUser={currentUser}
+              questionText={questionText}
+              setQuestionText={setQuestionText}
+              questionError={questionError}
+              setQuestionError={setQuestionError}
+              questionSuccess={questionSuccess}
+              submittingQuestion={submittingQuestion}
+              handleSubmitQuestion={handleSubmitQuestion}
+              questionSort={questionSort}
+              setQuestionSort={setQuestionSort}
+              loadingQuestions={loadingQuestions}
+              sortedQuestions={sortedQuestions}
+              questionLikes={questionLikes}
+              handleLikeQuestion={handleLikeQuestion}
+              confirmDeleteQuestion={confirmDeleteQuestion}
+            />
+            <EventFeedbackSection
+              currentUser={currentUser}
+              feedbackRating={feedbackRating}
+              setFeedbackRating={setFeedbackRating}
+              feedbackComment={feedbackComment}
+              setFeedbackComment={setFeedbackComment}
+              feedbackSubmitted={feedbackSubmitted}
+              feedbackError={feedbackError}
+              setFeedbackError={setFeedbackError}
+              loadingFeedback={loadingFeedback}
+              handleSubmitFeedback={handleSubmitFeedback}
+            />
+          </>
         );
 
       case "call": {
