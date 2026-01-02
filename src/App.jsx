@@ -11,7 +11,7 @@ import StepOne from "./components/StepOne";
 import StepTwo from "./components/StepTwo";
 import StepThree from "./components/StepThree";
 import StepFour from "./components/StepFour";
-import Sidebar from "./components/SideBar";
+import Sidebar from "./components/Sidebar";
 import SuccessModal from "./components/SuccessModal";
 import ForgotPasswordPage from "./components/ForgotPasswordPage";
 import ResetPasswordPage from "./components/ResetPasswordPage";
