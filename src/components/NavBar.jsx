@@ -238,18 +238,20 @@ const Navbar = () => {
                     )}
 
                     {/* Bloc réservé aux communicants (Authors) */}
+                    {(user.role?.toUpperCase() === "COMMUNICANT" || user.role?.toUpperCase() === "SUPER_ADMIN") && (
+                      <button
+                        type="button"
+                        className="navbar-dropdown-item"
+                        onClick={() => {
+                          navigate("/author/dashboard");
+                          setOpenMenu(false);
+                        }}
+                      >
+                        Author Space
+                      </button>
+                    )}
                     {user.role?.toUpperCase() === "COMMUNICANT" && (
                       <>
-                        <button
-                          type="button"
-                          className="navbar-dropdown-item"
-                          onClick={() => {
-                            navigate("/author/dashboard");
-                            setOpenMenu(false);
-                          }}
-                        >
-                          Author Dashboard
-                        </button>
                         <button
                           type="button"
                           className="navbar-dropdown-item"
@@ -331,28 +333,16 @@ const Navbar = () => {
 
                     {/* Bloc réservé aux super admins */}
                     {user.role?.toUpperCase() === "SUPER_ADMIN" && (
-                      <>
-                        <button
-                          type="button"
-                          className="navbar-dropdown-item"
-                          onClick={() => {
-                            navigate("/superadmin/dashboard");
-                            setOpenMenu(false);
-                          }}
-                        >
-                          Super Admin Panel
-                        </button>
-                        <button
-                          type="button"
-                          className="navbar-dropdown-item"
-                          onClick={() => {
-                            navigate("/admin/dashboard");
-                            setOpenMenu(false);
-                          }}
-                        >
-                          Organizer Space
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        className="navbar-dropdown-item"
+                        onClick={() => {
+                          navigate("/superadmin/dashboard");
+                          setOpenMenu(false);
+                        }}
+                      >
+                        Super Admin Panel
+                      </button>
                     )}
 
                     {/* Profil */}

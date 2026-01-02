@@ -25,6 +25,8 @@ const AdminEvents = () => {
                 });
                 if (response.ok) {
                     const data = await response.json();
+                    console.log("AdminEvents: Fetched events count:", data.length);
+                    console.log("AdminEvents: Data sample:", data.slice(0, 2));
                     setEvents(data);
                 }
             } catch (error) {

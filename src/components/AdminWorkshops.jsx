@@ -11,14 +11,14 @@ const AdminWorkshops = () => {
     const [events, setEvents] = useState([]);
     const [selectedEventId, setSelectedEventId] = useState("");
     const [showModal, setShowModal] = useState(false);
+    const [communicants, setCommunicants] = useState([]);
     const [workshopForm, setWorkshopForm] = useState({
         titre: "",
         description: "",
         salle: "",
         date: "",
         nb_places: 30,
-        responsable_nom: "",
-        responsable_prenom: ""
+        responsable_id: ""
     });
 
     // Get current user for permission checks
@@ -27,7 +27,23 @@ const AdminWorkshops = () => {
 
     useEffect(() => {
         fetchEvents();
+        fetchCommunicants();
     }, []);
+
+    const fetchCommunicants = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch("/api/users/role/COMMUNICANT", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setCommunicants(data);
+            }
+        } catch (error) {
+            console.error("Error fetching communicants:", error);
+        }
+    };
 
     useEffect(() => {
         if (selectedEventId) {
@@ -85,8 +101,7 @@ const AdminWorkshops = () => {
             salle: workshop.salle,
             date: workshop.date ? new Date(workshop.date).toISOString().slice(0, 16) : "",
             nb_places: workshop.nb_places,
-            responsable_nom: workshop.responsable_nom,
-            responsable_prenom: workshop.responsable_prenom
+            responsable_id: workshop.responsable_id
         });
         setEditingWorkshopId(workshop.id);
         setShowModal(true);
@@ -142,8 +157,7 @@ const AdminWorkshops = () => {
                     salle: "",
                     date: "",
                     nb_places: 30,
-                    responsable_nom: "",
-                    responsable_prenom: ""
+                    responsable_id: ""
                 });
                 fetchWorkshops();
             } else {
@@ -168,7 +182,7 @@ const AdminWorkshops = () => {
                         <button className="btn-primary" onClick={() => {
                             setEditingWorkshopId(null);
                             setWorkshopForm({
-                                titre: "", description: "", salle: "", date: "", nb_places: 30, responsable_nom: "", responsable_prenom: ""
+                                titre: "", description: "", salle: "", date: "", nb_places: 30, responsable_id: ""
                             });
                             setShowModal(true);
                         }}>
@@ -295,25 +309,24 @@ const AdminWorkshops = () => {
                                     required
                                 />
                             </div>
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Trainer First Name</label>
-                                    <input
-                                        type="text"
-                                        value={workshopForm.responsable_prenom}
-                                        onChange={(e) => setWorkshopForm({ ...workshopForm, responsable_prenom: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Trainer Last Name</label>
-                                    <input
-                                        type="text"
-                                        value={workshopForm.responsable_nom}
-                                        onChange={(e) => setWorkshopForm({ ...workshopForm, responsable_nom: e.target.value })}
-                                        required
-                                    />
-                                </div>
+                            <div className="form-group">
+                                <label>Responsible Trainer</label>
+                                <select
+                                    required
+                                    value={workshopForm.responsable_id}
+                                    onChange={(e) => setWorkshopForm({ ...workshopForm, responsable_id: e.target.value })}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid #e2e8f0'
+                                    }}
+                                >
+                                    <option value="">Select a trainer...</option>
+                                    {communicants.map(c => (
+                                        <option key={c.id} value={c.id}>{c.nom} {c.prenom} ({c.institution || 'N/A'})</option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="modal-actions">
                                 <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>Cancel</button>

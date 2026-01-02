@@ -1,7 +1,7 @@
 // validators/attestation.validators.js
 const { body, query, param } = require('express-validator');
 
-const ALLOWED_TYPES = ['participant', 'communicant', 'membre_comite', 'organisateur'];
+const ALLOWED_TYPES = ['participant', 'communicant', 'membre_comite', 'organisateur', 'invite'];
 
 // ===============================
 // Phase 3 (existing)

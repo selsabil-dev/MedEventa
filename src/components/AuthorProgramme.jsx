@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import AuthorLayout from "./AuthorLayout";
 import "./AuthorProgramme.css";
-import { FiCoffee, FiEdit2, FiEye, FiX } from "react-icons/fi"; // Added icons
+import { FiCoffee, FiEdit2, FiEye, FiX, FiUser } from "react-icons/fi";
 import axios from "axios";
 
 const AuthorProgramme = () => {
@@ -29,13 +29,13 @@ const AuthorProgramme = () => {
                 const eventsRes = await axios.get("/api/events", {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                const fetchedEvents = eventsRes.data.events || [];
+                const fetchedEvents = eventsRes.data || [];
                 setEvents(fetchedEvents);
 
                 if (fetchedEvents.length > 0) {
                     const firstEvent = fetchedEvents[0];
                     setSelectedEventId(firstEvent.id);
-                    await fetchProgram(firstEvent.id, firstEvent.date_debut);
+                    await fetchProgram(firstEvent.id);
                 }
             } catch (err) {
                 console.error("Failed to load initial data", err);
@@ -46,37 +46,55 @@ const AuthorProgramme = () => {
         loadInitialData();
     }, [token]);
 
-    const fetchProgram = async (eventId, date) => {
+    const fetchProgram = async (eventId) => {
         try {
-            // Detailed program requires a date. We'll use the event's start date as default.
-            const formattedDate = date ? new Date(date).toISOString().split('T')[0] : "";
-            const res = await axios.get(`/api/events/${eventId}/program/detailed`, {
-                headers: { Authorization: `Bearer ${token}` },
-                params: { date: formattedDate }
+            // THE PROGRAMME HERE SHOULD BE THE AUTHOR'S PROGRAMME ONLY HIS
+            const res = await axios.get("/api/my-interventions", {
+                headers: { Authorization: `Bearer ${token}` }
             });
 
-            if (res.data && res.data.sessions) {
-                // Map backend sessions to frontend schedule format
-                const mappedSchedule = res.data.sessions.map(session => ({
-                    id: session.id,
-                    time: session.horaire || "TBA",
-                    title: session.titre || "Unnamed Session",
-                    room: session.salle || "TBA",
-                    type: "session",
-                    presentations: (session.communications || []).map(comm => ({
-                        id: comm.id,
-                        title: comm.titre,
-                        authors: "Speaker", // Backend logic might need more detail for authors
+            if (res.data) {
+                // Filter by the selected event
+                const myItems = res.data.filter(item =>
+                    item.evenement_id?.toString() === eventId.toString() ||
+                    item.session_evenement_id?.toString() === eventId.toString()
+                );
+
+                // Map results to schedule format
+                const mappedSchedule = myItems.map(item => {
+                    const isSpeaker = item.role === 'speaker' || item.comm_id !== null;
+                    const presentations = isSpeaker ? [{
+                        id: item.comm_id,
+                        title: item.comm_titre || item.titre,
+                        authors: "You (Presenter)",
                         affiliation: "",
-                        isMyPresentation: comm.auteur_id === user?.id,
-                        abstractText: comm.resume || comm.abstractText || "",
-                        type: comm.type
-                    }))
-                }));
+                        isMyPresentation: true,
+                        abstractText: item.comm_resume || item.resume || "",
+                        type: item.comm_type || item.type
+                    }] : [];
+
+                    return {
+                        id: item.session_id || item.id,
+                        time: item.session_horaire || item.horaire || "TBA",
+                        title: item.session_titre || item.titre || "Unnamed Session",
+                        room: item.session_salle || item.salle || "TBA",
+                        type: "session",
+                        role: item.role || (item.comm_id ? 'speaker' : 'chair'),
+                        presentations
+                    };
+                });
+
+                // Sort by time
+                mappedSchedule.sort((a, b) => {
+                    if (a.time === "TBA") return 1;
+                    if (b.time === "TBA") return -1;
+                    return a.time.localeCompare(b.time);
+                });
+
                 setSchedule(mappedSchedule);
             }
         } catch (err) {
-            console.error("Failed to fetch program", err);
+            console.error("Failed to fetch personal program", err);
             setSchedule([]);
         }
     };
@@ -84,10 +102,7 @@ const AuthorProgramme = () => {
     const handleEventChange = (e) => {
         const id = e.target.value;
         setSelectedEventId(id);
-        const selectedEvent = events.find(ev => ev.id.toString() === id);
-        if (selectedEvent) {
-            fetchProgram(id, selectedEvent.date_debut);
-        }
+        fetchProgram(id);
     };
 
     const handleView = (pres) => {
@@ -149,8 +164,8 @@ const AuthorProgramme = () => {
                 <div className="ap-header">
                     <div className="ap-header-top">
                         <div>
-                            <h1>Scientific Programme</h1>
-                            <p>Browse the scheduled sessions and speakers.</p>
+                            <h1>My Scientific Programme</h1>
+                            <p>Your personalized schedule of interventions and presentations.</p>
                         </div>
                         {events.length > 0 && (
                             <div className="ap-event-selector">
@@ -172,56 +187,63 @@ const AuthorProgramme = () => {
                 </div>
 
                 {loading ? (
-                    <p>Loading schedule...</p>
+                    <p>Loading your schedule...</p>
+                ) : schedule.length === 0 ? (
+                    <div className="ap-no-data" style={{ textAlign: 'center', padding: '3rem', background: '#f8fafc', borderRadius: '12px', color: '#64748b' }}>
+                        <p>You have no scheduled interventions for this event.</p>
+                    </div>
                 ) : (
                     <div className="ap-timeline">
                         {schedule.map((item) => (
-                            <React.Fragment key={item.id}>
-                                {item.type === "break" ? (
-                                    <div className="ap-break">
-                                        <FiCoffee /> {item.title} ({item.time})
+                            <div key={item.id} className="ap-timeline-item">
+                                <div className="ap-time-marker"></div>
+                                <span className="ap-time-label">
+                                    {item.time.includes('T') ? new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : item.time}
+                                </span>
+
+                                <div className="ap-session-card">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <h3 className="ap-session-title">{item.title}</h3>
+                                        {item.role === 'chair' && (
+                                            <span style={{ fontSize: '0.7rem', background: '#12324a', color: 'white', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
+                                                CHAIR / MODERATOR
+                                            </span>
+                                        )}
                                     </div>
-                                ) : (
-                                    <div className="ap-timeline-item">
-                                        <div className="ap-time-marker"></div>
-                                        <span className="ap-time-label">{item.time}</span>
+                                    <div className="ap-session-meta">{item.room}</div>
 
-                                        <div className="ap-session-card">
-                                            <h3 className="ap-session-title">{item.title}</h3>
-                                            <div className="ap-session-meta">{item.room}</div>
-
-                                            {item.presentations && item.presentations.map(pres => (
-                                                <div key={pres.id} className="ap-abstract-box">
-                                                    <div>
-                                                        <div className="ap-abstract-title">{pres.title}</div>
-                                                        <div className="ap-authors">
-                                                            {pres.authors} <span style={{ color: "#0f9d8a" }}>•</span> <span className="ap-affiliation">{pres.affiliation}</span>
-                                                        </div>
-                                                        {pres.isMyPresentation && <div style={{ fontSize: "0.75rem", color: "#0f9d8a", fontWeight: "bold", marginTop: "0.25rem" }}>YOUR PRESENTATION</div>}
+                                    {item.presentations && item.presentations.length > 0 ? (
+                                        item.presentations.map(pres => (
+                                            <div key={pres.id} className="ap-abstract-box">
+                                                <div>
+                                                    <div className="ap-abstract-title">{pres.title}</div>
+                                                    <div className="ap-authors">
+                                                        <FiUser /> {pres.authors}
                                                     </div>
-                                                    <div className="ap-actions">
-                                                        <button className="ap-view-btn" onClick={() => handleView(pres)}>
-                                                            <FiEye /> View
-                                                        </button>
-                                                        {pres.isMyPresentation && ( // Show Edit only if it's mine
-                                                            <button className="ap-edit-btn" onClick={() => handleEdit(pres)} style={{ marginLeft: "8px" }}>
-                                                                <FiEdit2 /> Edit
-                                                            </button>
-                                                        )}
+                                                    <div style={{ fontSize: "0.75rem", color: "#0f9d8a", fontWeight: "bold", marginTop: "0.25rem" }}>
+                                                        YOUR PRESENTATION
                                                     </div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </React.Fragment>
+                                                <div className="ap-actions">
+                                                    <button className="ap-view-btn" onClick={() => handleView(pres)}>
+                                                        <FiEye /> View
+                                                    </button>
+                                                    <button className="ap-edit-btn" onClick={() => handleEdit(pres)} style={{ marginLeft: "8px" }}>
+                                                        <FiEdit2 /> Edit
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        item.role === 'chair' && (
+                                            <div style={{ marginTop: '1rem', fontStyle: 'italic', fontSize: '0.85rem', color: '#64748b' }}>
+                                                You are presiding over this session.
+                                            </div>
+                                        )
+                                    )}
+                                </div>
+                            </div>
                         ))}
-
-                        <div className="ap-timeline-item">
-                            <div className="ap-time-marker" style={{ background: "#cbd5e1", borderColor: "#f1f5f9" }}></div>
-                            <span className="ap-time-label" style={{ color: "#94a3b8" }}>12:30 PM</span>
-                            <div style={{ color: "#94a3b8", fontStyle: "italic", paddingLeft: "0.5rem" }}>End of morning sessions</div>
-                        </div>
                     </div>
                 )}
 
@@ -232,7 +254,7 @@ const AuthorProgramme = () => {
                             <button className="modal-close" onClick={closeModal}><FiX /></button>
                             <h2>{selectedPresentation.title}</h2>
                             <p className="modal-meta" style={{ color: '#64748b', marginBottom: '1rem' }}>
-                                {selectedPresentation.authors} — {selectedPresentation.affiliation}
+                                {selectedPresentation.authors}
                             </p>
                             <div className="modal-body">
                                 <h4>Abstract</h4>
@@ -288,11 +310,22 @@ const AuthorProgramme = () => {
                 .ap-select { padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid #cbd5e1; background: white; color: #1e293b; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
                 .ap-select:focus { border-color: #0f9d8a; }
                 .ap-actions { display: flex; align-items: center; }
-                .ap-edit-btn { display: flex; align-items: center; gap: 4px; border: 1px solid #0f9d8a; background: white; color: #0f9d8a; padding: 4px 8px; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+                .ap-view-btn { display: flex; align-items: center; gap: 4px; border: 1px solid #12324a; background: white; color: #12324a; padding: 4px 12px; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+                .ap-view-btn:hover { background: #12324a; color: white; }
+                .ap-edit-btn { display: flex; align-items: center; gap: 4px; border: 1px solid #0f9d8a; background: white; color: #0f9d8a; padding: 4px 12px; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
                 .ap-edit-btn:hover { background: #0f9d8a; color: white; }
                 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
                 .modal-content { background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 600px; position: relative; max-height: 90vh; overflow-y: auto; }
                 .modal-close { position: absolute; top: 1rem; right: 1rem; border: none; background: none; font-size: 1.5rem; cursor: pointer; }
+                .ap-timeline-item { position: relative; padding-left: 2rem; border-left: 2px solid #e2e8f0; margin-bottom: 2rem; }
+                .ap-time-marker { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: #0f9d8a; border: 3px solid white; }
+                .ap-time-label { display: block; font-size: 0.8rem; font-weight: 600; color: #64748b; margin-bottom: 0.5rem; }
+                .ap-session-card { background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+                .ap-session-title { color: #12324a; font-size: 1.25rem; margin-bottom: 0.25rem; }
+                .ap-session-meta { color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem; display: flex; gap: 1rem; }
+                .ap-abstract-box { background: #f8fafc; padding: 1rem; border-radius: 8px; border-left: 4px solid #0f9d8a; display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+                .ap-abstract-title { font-weight: 600; color: #1e293b; margin-bottom: 0.25rem; }
+                .ap-authors { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #64748b; }
             `}</style>
         </AuthorLayout>
     );

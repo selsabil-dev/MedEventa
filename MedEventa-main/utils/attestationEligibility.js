@@ -21,11 +21,11 @@ const hasAcceptedCommunication = (evenementId, userId, callback) => {
     SELECT id
     FROM communication
     WHERE evenement_id = ?
-      AND auteur_id = ?
+      AND (auteur_id = ? OR presentateur_id = ?)
       AND etat = 'acceptee'
     LIMIT 1
   `;
-  db.query(sql, [evenementId, userId], (err, rows) => {
+  db.query(sql, [evenementId, userId, userId], (err, rows) => {
     if (err) return callback(err);
     callback(null, !!(rows && rows.length));
   });
@@ -65,7 +65,7 @@ const isOrganisateurForEvent = (evenementId, userId, callback) => {
 // Événement terminé ? (date_fin < maintenant)
 const isEventFinished = (evenementId, callback) => {
   const sql = `
-    SELECT date_fin
+    SELECT date_fin, date_debut
     FROM evenement
     WHERE id = ?
     LIMIT 1
@@ -76,14 +76,20 @@ const isEventFinished = (evenementId, callback) => {
       return callback(null, { ok: false, reason: 'EVENT_NOT_FOUND' });
     }
 
-    const dateFin = rows[0].date_fin;
+    let dateFin = rows[0].date_fin;
     if (!dateFin) {
-      // pas de date_fin => on considère ouvert
-      return callback(null, { ok: true, finished: false });
+      // Si pas de date_fin, on bloque par sécurité ou on peut utiliser date_debut
+      return callback(null, { ok: false, finished: false, reason: 'EVENT_NOT_FINISHED' });
     }
 
     const now = new Date();
     const fin = new Date(dateFin);
+
+    // Si fin est une date pure (sans heure), elle est à 00:00:00.
+    // On ajoute 23h59 pour être sûr que la journée est passée.
+    if (dateFin.toString().length <= 10) { // Format YYYY-MM-DD
+      fin.setHours(23, 59, 59, 999);
+    }
 
     if (now >= fin) {
       return callback(null, { ok: true, finished: true });
@@ -109,10 +115,10 @@ const isGuestSpeakerForEvent = (evenementId, userId, callback) => {
     SELECT s.id
     FROM session s
     JOIN communication c ON c.session_id = s.id
-    WHERE s.evenement_id = ? AND c.auteur_id = ?
+    WHERE s.evenement_id = ? AND (c.auteur_id = ? OR c.presentateur_id = ?)
     LIMIT 1
   `;
-  db.query(sql, [evenementId, userId, evenementId, userId], (err, rows) => {
+  db.query(sql, [evenementId, userId, evenementId, userId, userId], (err, rows) => {
     if (err) return callback(err);
     callback(null, !!(rows && rows.length));
   });

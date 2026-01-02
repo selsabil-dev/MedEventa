@@ -95,9 +95,11 @@ const register = async (req, res) => {
 
 // LOGIN
 const login = (req, res) => {
+  console.log('Login request body:', req.body);
   const { email, mot_de_passe } = req.body;
 
   if (!email || !mot_de_passe) {
+    console.log('Login failed: missing email or password');
     return res.status(400).json({ message: "Email et mot de passe requis" });
   }
 
@@ -111,6 +113,7 @@ const login = (req, res) => {
       }
 
       if (result.length === 0) {
+        console.log('Login failed: user not found', email);
         return res
           .status(400)
           .json({ message: "Email ou mot de passe incorrect" });
@@ -120,6 +123,7 @@ const login = (req, res) => {
 
       const isMatch = await bcrypt.compare(mot_de_passe, user.mot_de_passe);
       if (!isMatch) {
+        console.log('Login failed: password mismatch', email);
         return res
           .status(400)
           .json({ message: "Email ou mot de passe incorrect" });
@@ -132,6 +136,7 @@ const login = (req, res) => {
         { expiresIn: "1d" } // durée 1 jour
       );
 
+      console.log('Login successful:', email, user.role);
       res.json({
         message: "Authentification réussie",
         token,

@@ -23,11 +23,13 @@ const AdminDashboard = () => {
     // Modal states
     const [showSessionModal, setShowSessionModal] = useState(false);
     const [showWorkshopModal, setShowWorkshopModal] = useState(false);
+    const [communicants, setCommunicants] = useState([]);
     const [sessionForm, setSessionForm] = useState({ eventId: "", titre: "", horaire: "", salle: "", president_id: "" });
     const [workshopForm, setWorkshopForm] = useState({ eventId: "", titre: "", date: "", salle: "", responsable_id: "", nb_places: "" });
 
     useEffect(() => {
         fetchEvents();
+        fetchCommunicants();
     }, []);
 
     useEffect(() => {
@@ -37,6 +39,21 @@ const AdminDashboard = () => {
             fetchRecentProgramme();
         }
     }, [selectedEventId]);
+
+    const fetchCommunicants = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch("/api/users/role/COMMUNICANT", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setCommunicants(data);
+            }
+        } catch (error) {
+            console.error("Error fetching communicants:", error);
+        }
+    };
 
     const fetchEvents = async () => {
         try {
@@ -544,20 +561,23 @@ const AdminDashboard = () => {
                                     />
                                 </div>
                                 <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Chair/President ID *</label>
-                                    <input
-                                        type="number"
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Chair/President *</label>
+                                    <select
                                         required
                                         value={sessionForm.president_id}
                                         onChange={(e) => setSessionForm({ ...sessionForm, president_id: e.target.value })}
-                                        placeholder="User ID"
                                         style={{
                                             width: '100%',
                                             padding: '0.75rem',
                                             borderRadius: '8px',
                                             border: '1px solid #e2e8f0'
                                         }}
-                                    />
+                                    >
+                                        <option value="">Select a speaker...</option>
+                                        {communicants.map(c => (
+                                            <option key={c.id} value={c.id}>{c.nom} {c.prenom} ({c.institution || 'N/A'})</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                                     <button
@@ -703,20 +723,23 @@ const AdminDashboard = () => {
                                     />
                                 </div>
                                 <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Responsible (User ID) *</label>
-                                    <input
-                                        type="number"
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Responsible (Speaker) *</label>
+                                    <select
                                         required
                                         value={workshopForm.responsable_id}
                                         onChange={(e) => setWorkshopForm({ ...workshopForm, responsable_id: e.target.value })}
-                                        placeholder="User ID of Responsible"
                                         style={{
                                             width: '100%',
                                             padding: '0.75rem',
                                             borderRadius: '8px',
                                             border: '1px solid #e2e8f0'
                                         }}
-                                    />
+                                    >
+                                        <option value="">Select a responsible author...</option>
+                                        {communicants.map(c => (
+                                            <option key={c.id} value={c.id}>{c.nom} {c.prenom} ({c.institution || 'N/A'})</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div style={{ marginBottom: '1.5rem' }}>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Capacity (Places) *</label>

@@ -9,6 +9,7 @@ const AdminSessions = () => {
     const [events, setEvents] = useState([]);
     const [selectedEventId, setSelectedEventId] = useState("");
     const [sessions, setSessions] = useState([]);
+    const [communicants, setCommunicants] = useState([]);
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ const AdminSessions = () => {
 
     useEffect(() => {
         fetchEvents();
+        fetchCommunicants();
     }, []);
 
     useEffect(() => {
@@ -29,6 +31,21 @@ const AdminSessions = () => {
             setSessions([]);
         }
     }, [selectedEventId]);
+
+    const fetchCommunicants = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch("/api/users/role/COMMUNICANT", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setCommunicants(data);
+            }
+        } catch (error) {
+            console.error("Error fetching communicants:", error);
+        }
+    };
 
     const fetchEvents = async () => {
         try {
@@ -191,7 +208,7 @@ const AdminSessions = () => {
                                         <div className="session-details">
                                             <p><FiClock /> {new Date(session.horaire).toLocaleString()}</p>
                                             <p><FiMapPin /> {session.salle}</p>
-                                            <p><FiUser /> President ID: {session.president_id}</p>
+                                            <p><FiUser /> President: {session.president_nom} {session.president_prenom || 'N/A'}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -238,13 +255,18 @@ const AdminSessions = () => {
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label>President ID (User ID)</label>
-                                    <input
-                                        type="number"
+                                    <label>President / Chair</label>
+                                    <select
                                         required
                                         value={formData.president_id}
                                         onChange={e => setFormData({ ...formData, president_id: e.target.value })}
-                                    />
+                                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                                    >
+                                        <option value="">Select a speaker...</option>
+                                        {communicants.map(c => (
+                                            <option key={c.id} value={c.id}>{c.nom} {c.prenom} ({c.institution || 'N/A'})</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div className="modal-actions">
                                     <button type="button" onClick={() => setShowModal(false)}>Cancel</button>

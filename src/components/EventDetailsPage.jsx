@@ -199,16 +199,24 @@ const EventDetailsPage = () => {
   const [backendSessions, setBackendSessions] = useState([]);
   useEffect(() => {
     const fetchProgram = async () => {
+      console.log('fetchProgram calling with id:', id);
       if (!id) return;
       try {
         const response = await axios.get(`/api/events/${id}/program`);
+        console.log('Sessions API Response:', response.data);
         if (response.data && response.data.sessions) {
+          console.log(`Found ${response.data.sessions.length} sessions`);
           setBackendSessions(response.data.sessions);
         } else {
+          console.log('No sessions property in API response or empty');
           setBackendSessions([]);
         }
       } catch (err) {
         console.error("Error fetching program:", err);
+        if (err.response) {
+          console.log('Error status:', err.response.status);
+          console.log('Error data:', err.response.data);
+        }
         setBackendSessions([]);
       }
     };
@@ -239,30 +247,34 @@ const EventDetailsPage = () => {
         });
         console.log('Workshops API Response:', response.data);
         if (response.data && Array.isArray(response.data)) {
-          // Map backend workshop format to frontend expected format
-          const mappedWorkshops = response.data.map(w => ({
-            id: w.id,
-            _id: w.id.toString(),
-            title: w.titre,
-            trainer: w.responsable_nom ? `${w.responsable_prenom} ${w.responsable_nom}` : 'Workshop Leader',
-            time: w.date ? new Date(w.date).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true
-            }) : 'TBA',
-            room: w.salle || 'TBA',
-            day: w.date ? new Date(w.date).toLocaleDateString('en-US', {
+          const mappedWorkshops = response.data.map(w => {
+            const wDate = w.date ? new Date(w.date) : null;
+            const wDay = wDate ? wDate.toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
               year: 'numeric'
-            }) : 'TBA',
-            capacity: w.nb_places || 30,
-            registeredCount: w.registered_count || 0,
-            level: w.level || 'Intermediate',
-            description: w.description || 'Workshop session',
-            price: w.price || 0,
-            ouvert: w.ouvert !== undefined ? w.ouvert : true
-          }));
+            }) : 'TBA';
+
+            return {
+              id: w.id,
+              _id: w.id ? w.id.toString() : Math.random().toString(),
+              title: w.titre,
+              trainer: w.responsable_nom ? `${w.responsable_prenom} ${w.responsable_nom}` : 'Workshop Leader',
+              time: wDate ? wDate.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              }) : 'TBA',
+              room: w.salle || 'TBA',
+              day: wDay,
+              capacity: w.nb_places || 30,
+              registeredCount: w.registered_count || 0,
+              level: w.level || 'Intermediate',
+              description: w.description || 'Workshop session',
+              price: w.price || 0,
+              ouvert: w.ouvert !== undefined ? w.ouvert : true
+            };
+          });
           console.log('Mapped Workshops:', mappedWorkshops);
           setBackendWorkshops(mappedWorkshops);
         } else {
@@ -579,12 +591,15 @@ const EventDetailsPage = () => {
 
   // Generate days array from event start and end dates
   const days = useMemo(() => {
-    if (!eventDetails?.date_debut || !eventDetails?.date_fin) {
+    const eventDateDebut = eventDetails?.event?.date_debut || eventDetails?.date_debut;
+    const eventDateFin = eventDetails?.event?.date_fin || eventDetails?.date_fin;
+
+    if (!eventDateDebut || !eventDateFin) {
       return ['Day 1'];
     }
 
-    const start = new Date(eventDetails.date_debut);
-    const end = new Date(eventDetails.date_fin);
+    const start = new Date(eventDateDebut);
+    const end = new Date(eventDateFin);
     const daysList = [];
 
     const currentDate = new Date(start);
@@ -657,14 +672,14 @@ const EventDetailsPage = () => {
     id: s.id,
     _id: s.id.toString(),
     title: s.titre,
-    chair: s.president_id || "Scientific Chair",
+    chair: s.president_nom ? `${s.president_prenom} ${s.president_nom}` : (s.president_id || "Scientific Chair"),
     time: s.horaire ? new Date(s.horaire).toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
     }) : "TBA",
     room: s.salle || "TBA",
-    day: s.horaire && eventDetails?.date_debut
+    day: s.horaire && (eventDetails?.event?.date_debut || eventDetails?.date_debut)
       ? new Date(s.horaire).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -677,6 +692,7 @@ const EventDetailsPage = () => {
     description: `Scientific session on ${s.titre}`,
     communications: s.communications || []
   }));
+  console.log('Final Mapped Sessions:', sessions);
 
   const speakers = event?.speakers || [
     {
@@ -712,7 +728,6 @@ const EventDetailsPage = () => {
       country: "USA",
     },
   ];
-
 
   const paymentStatus =
     inscriptionData?.paymentStatus ||
@@ -1211,7 +1226,7 @@ const EventDetailsPage = () => {
 
   const filteredConferences = conferences.filter((c) => c.day === activeDay);
   const filteredWorkshops = backendWorkshops.filter((w) => w.day === activeDay);
-  const filteredSessions = backendSessions.filter((s) => s.day === activeDay);
+  const filteredSessions = sessions.filter((s) => s.day === activeDay);
 
   // Determine what to show based on filter
   const showConferences =
@@ -1346,7 +1361,7 @@ const EventDetailsPage = () => {
   }
 
   return (
-    <div className="ed-page">
+    <div className="ed-page" >
       <NavBar />
       <div className="ed-shell">
         {/* TOP NAV */}
@@ -1789,313 +1804,319 @@ const EventDetailsPage = () => {
       )}
 
       {/* WORKSHOP REGISTRATION MODAL */}
-      {showWorkshopModal && selectedWorkshop && (
-        <div className="ed-modal-backdrop">
-          <div className="ed-modal medium">
-            <button
-              type="button"
-              className="ed-modal-close"
-              onClick={() => setShowWorkshopModal(false)}
-              disabled={registrationLoading}
-            >
-              ×
-            </button>
+      {
+        showWorkshopModal && selectedWorkshop && (
+          <div className="ed-modal-backdrop">
+            <div className="ed-modal medium">
+              <button
+                type="button"
+                className="ed-modal-close"
+                onClick={() => setShowWorkshopModal(false)}
+                disabled={registrationLoading}
+              >
+                ×
+              </button>
 
-            <div className="ed-modal-header">
-              <span className="ed-modal-tag">Workshop Registration</span>
-              <h3 className="ed-modal-title">Register for Workshop</h3>
-              <p className="ed-modal-subtitle">{selectedWorkshop.title}</p>
-            </div>
+              <div className="ed-modal-header">
+                <span className="ed-modal-tag">Workshop Registration</span>
+                <h3 className="ed-modal-title">Register for Workshop</h3>
+                <p className="ed-modal-subtitle">{selectedWorkshop.title}</p>
+              </div>
 
-            <div className="ed-modal-body">
-              {registrationSuccess ? (
-                <div className="ed-registration-success">
-                  <FaCheck className="ed-success-icon" />
-                  <h4>Registration Successful!</h4>
-                  <p>You have successfully registered for the workshop.</p>
-                  <button
-                    type="button"
-                    className="ed-btn secondary"
-                    onClick={() => setShowWorkshopModal(false)}
-                  >
-                    Close
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmitWorkshopRegistration}>
-                  {workshopError && (
-                    <div className="ed-message-error">
-                      <FaTimes /> {workshopError}
-                    </div>
-                  )}
-                  <div className="ed-workshop-info">
-                    <div className="ed-info-row">
-                      <FaClock /> <strong>Time:</strong> {selectedWorkshop.time}
-                    </div>
-                    <div className="ed-info-row">
-                      <FaMapMarkerAlt /> <strong>Location:</strong>{" "}
-                      {selectedWorkshop.room}
-                    </div>
-                    <div className="ed-info-row">
-                      <FaUserTie /> <strong>Trainer:</strong>{" "}
-                      {selectedWorkshop.trainer}
-                    </div>
-                    <div className="ed-info-row">
-                      <FaUsers /> <strong>Availability:</strong>{" "}
-                      {selectedWorkshop.registeredCount}/
-                      {selectedWorkshop.capacity}
-                    </div>
+              <div className="ed-modal-body">
+                {registrationSuccess ? (
+                  <div className="ed-registration-success">
+                    <FaCheck className="ed-success-icon" />
+                    <h4>Registration Successful!</h4>
+                    <p>You have successfully registered for the workshop.</p>
+                    <button
+                      type="button"
+                      className="ed-btn secondary"
+                      onClick={() => setShowWorkshopModal(false)}
+                    >
+                      Close
+                    </button>
                   </div>
+                ) : (
+                  <form onSubmit={handleSubmitWorkshopRegistration}>
+                    {workshopError && (
+                      <div className="ed-message-error">
+                        <FaTimes /> {workshopError}
+                      </div>
+                    )}
+                    <div className="ed-workshop-info">
+                      <div className="ed-info-row">
+                        <FaClock /> <strong>Time:</strong> {selectedWorkshop.time}
+                      </div>
+                      <div className="ed-info-row">
+                        <FaMapMarkerAlt /> <strong>Location:</strong>{" "}
+                        {selectedWorkshop.room}
+                      </div>
+                      <div className="ed-info-row">
+                        <FaUserTie /> <strong>Trainer:</strong>{" "}
+                        {selectedWorkshop.trainer}
+                      </div>
+                      <div className="ed-info-row">
+                        <FaUsers /> <strong>Availability:</strong>{" "}
+                        {selectedWorkshop.registeredCount}/
+                        {selectedWorkshop.capacity}
+                      </div>
+                    </div>
 
-                  <div className="ed-form-group">
-                    <label>Additional Notes (Optional)</label>
-                    <textarea
-                      name="notes"
-                      value={workshopSessionForm.notes}
-                      onChange={handleWorkshopSessionChange}
-                      placeholder="Any special requirements or notes..."
-                      rows="3"
-                      disabled={registrationLoading}
-                    />
-                  </div>
-
-                  <div className="ed-form-group">
-                    <label>Dietary Requirements (Optional)</label>
-                    <input
-                      type="text"
-                      name="dietaryRequirements"
-                      value={workshopSessionForm.dietaryRequirements}
-                      onChange={handleWorkshopSessionChange}
-                      placeholder="e.g., Vegetarian, Gluten-free"
-                      disabled={registrationLoading}
-                    />
-                  </div>
-
-                  <div className="ed-form-group">
-                    <label>Special Needs (Optional)</label>
-                    <input
-                      type="text"
-                      name="specialNeeds"
-                      value={workshopSessionForm.specialNeeds}
-                      onChange={handleWorkshopSessionChange}
-                      placeholder="e.g., Wheelchair access"
-                      disabled={registrationLoading}
-                    />
-                  </div>
-
-                  <div className="ed-modal-footer">
-                    <div className="ed-terms">
-                      <input
-                        type="checkbox"
-                        id="workshop-terms"
-                        required
+                    <div className="ed-form-group">
+                      <label>Additional Notes (Optional)</label>
+                      <textarea
+                        name="notes"
+                        value={workshopSessionForm.notes}
+                        onChange={handleWorkshopSessionChange}
+                        placeholder="Any special requirements or notes..."
+                        rows="3"
                         disabled={registrationLoading}
                       />
-                      <label htmlFor="workshop-terms">
-                        I confirm my registration for this workshop
-                      </label>
                     </div>
-                    <div className="ed-modal-actions">
-                      <button
-                        type="button"
-                        className="ed-btn secondary"
-                        onClick={() => setShowWorkshopModal(false)}
-                        disabled={registrationLoading}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="ed-btn primary wide"
-                        disabled={registrationLoading}
-                      >
-                        {registrationLoading ? (
-                          <FaSpinner className="spin" />
-                        ) : (
-                          <FaPen />
-                        )}
-                        {registrationLoading
-                          ? "Registering..."
-                          : "Confirm Workshop Registration"}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* SESSION REGISTRATION MODAL */}
-      {showSessionModal && selectedSession && (
-        <div className="ed-modal-backdrop">
-          <div className="ed-modal medium">
-            <button
-              type="button"
-              className="ed-modal-close"
-              onClick={() => setShowSessionModal(false)}
-              disabled={registrationLoading}
-            >
-              ×
-            </button>
-
-            <div className="ed-modal-header">
-              <span className="ed-modal-tag">Session Registration</span>
-              <h3 className="ed-modal-title">Register for Session</h3>
-              <p className="ed-modal-subtitle">{selectedSession.title}</p>
-            </div>
-
-            <div className="ed-modal-body">
-              {registrationSuccess ? (
-                <div className="ed-registration-success">
-                  <FaCheck className="ed-success-icon" />
-                  <h4>Registration Successful!</h4>
-                  <p>You have successfully registered for the session.</p>
-                  <button
-                    type="button"
-                    className="ed-btn secondary"
-                    onClick={() => setShowSessionModal(false)}
-                  >
-                    Close
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmitSessionRegistration}>
-                  <div className="ed-session-info">
-                    <div className="ed-info-row">
-                      <FaClock /> <strong>Time:</strong> {selectedSession.time}
-                    </div>
-                    <div className="ed-info-row">
-                      <FaMapMarkerAlt /> <strong>Location:</strong>{" "}
-                      {selectedSession.room}
-                    </div>
-                    <div className="ed-info-row">
-                      <FaUserTie /> <strong>Chair:</strong>{" "}
-                      {selectedSession.chair}
-                    </div>
-                    <div className="ed-info-row">
-                      <FaUsers /> <strong>Availability:</strong>{" "}
-                      {selectedSession.registeredCount}/
-                      {selectedSession.capacity}
-                    </div>
-                  </div>
-
-                  <div className="ed-form-group">
-                    <label>Additional Notes (Optional)</label>
-                    <textarea
-                      name="notes"
-                      value={workshopSessionForm.notes}
-                      onChange={handleWorkshopSessionChange}
-                      placeholder="Any special requirements or notes..."
-                      rows="3"
-                      disabled={registrationLoading}
-                    />
-                  </div>
-
-                  <div className="ed-form-group">
-                    <label>Dietary Requirements (Optional)</label>
-                    <input
-                      type="text"
-                      name="dietaryRequirements"
-                      value={workshopSessionForm.dietaryRequirements}
-                      onChange={handleWorkshopSessionChange}
-                      placeholder="e.g., Vegetarian, Gluten-free"
-                      disabled={registrationLoading}
-                    />
-                  </div>
-
-                  <div className="ed-form-group">
-                    <label>Special Needs (Optional)</label>
-                    <input
-                      type="text"
-                      name="specialNeeds"
-                      value={workshopSessionForm.specialNeeds}
-                      onChange={handleWorkshopSessionChange}
-                      placeholder="e.g., Wheelchair access"
-                      disabled={registrationLoading}
-                    />
-                  </div>
-
-                  <div className="ed-modal-footer">
-                    <div className="ed-terms">
+                    <div className="ed-form-group">
+                      <label>Dietary Requirements (Optional)</label>
                       <input
-                        type="checkbox"
-                        id="session-terms"
-                        required
+                        type="text"
+                        name="dietaryRequirements"
+                        value={workshopSessionForm.dietaryRequirements}
+                        onChange={handleWorkshopSessionChange}
+                        placeholder="e.g., Vegetarian, Gluten-free"
                         disabled={registrationLoading}
                       />
-                      <label htmlFor="session-terms">
-                        I confirm my registration for this session
-                      </label>
                     </div>
-                    <div className="ed-modal-actions">
-                      <button
-                        type="button"
-                        className="ed-btn secondary"
-                        onClick={() => setShowSessionModal(false)}
-                        disabled={registrationLoading}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="ed-btn primary wide"
-                        disabled={registrationLoading}
-                      >
-                        {registrationLoading ? (
-                          <FaSpinner className="spin" />
-                        ) : (
-                          <FaBook />
-                        )}
-                        {registrationLoading
-                          ? "Registering..."
-                          : "Confirm Session Registration"}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* DELETE QUESTION CONFIRMATION MODAL */}
-      {questionToDelete && (
-        <div className="ed-modal-backdrop">
-          <div className="ed-modal small">
-            <div className="ed-modal-header">
-              <h3 className="ed-modal-title">Delete Question</h3>
-            </div>
-            <div className="ed-modal-body">
-              <p>
-                Are you sure you want to delete this question? This action
-                cannot be undone.
-              </p>
-            </div>
-            <div className="ed-modal-footer">
-              <div className="ed-modal-actions">
-                <button
-                  type="button"
-                  className="ed-btn secondary"
-                  onClick={() => setQuestionToDelete(null)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="ed-btn primary"
-                  onClick={handleDeleteQuestion}
-                >
-                  <FaTrash /> Delete
-                </button>
+                    <div className="ed-form-group">
+                      <label>Special Needs (Optional)</label>
+                      <input
+                        type="text"
+                        name="specialNeeds"
+                        value={workshopSessionForm.specialNeeds}
+                        onChange={handleWorkshopSessionChange}
+                        placeholder="e.g., Wheelchair access"
+                        disabled={registrationLoading}
+                      />
+                    </div>
+
+                    <div className="ed-modal-footer">
+                      <div className="ed-terms">
+                        <input
+                          type="checkbox"
+                          id="workshop-terms"
+                          required
+                          disabled={registrationLoading}
+                        />
+                        <label htmlFor="workshop-terms">
+                          I confirm my registration for this workshop
+                        </label>
+                      </div>
+                      <div className="ed-modal-actions">
+                        <button
+                          type="button"
+                          className="ed-btn secondary"
+                          onClick={() => setShowWorkshopModal(false)}
+                          disabled={registrationLoading}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="ed-btn primary wide"
+                          disabled={registrationLoading}
+                        >
+                          {registrationLoading ? (
+                            <FaSpinner className="spin" />
+                          ) : (
+                            <FaPen />
+                          )}
+                          {registrationLoading
+                            ? "Registering..."
+                            : "Confirm Workshop Registration"}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                )}
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+
+      {/* SESSION REGISTRATION MODAL */}
+      {
+        showSessionModal && selectedSession && (
+          <div className="ed-modal-backdrop">
+            <div className="ed-modal medium">
+              <button
+                type="button"
+                className="ed-modal-close"
+                onClick={() => setShowSessionModal(false)}
+                disabled={registrationLoading}
+              >
+                ×
+              </button>
+
+              <div className="ed-modal-header">
+                <span className="ed-modal-tag">Session Registration</span>
+                <h3 className="ed-modal-title">Register for Session</h3>
+                <p className="ed-modal-subtitle">{selectedSession.title}</p>
+              </div>
+
+              <div className="ed-modal-body">
+                {registrationSuccess ? (
+                  <div className="ed-registration-success">
+                    <FaCheck className="ed-success-icon" />
+                    <h4>Registration Successful!</h4>
+                    <p>You have successfully registered for the session.</p>
+                    <button
+                      type="button"
+                      className="ed-btn secondary"
+                      onClick={() => setShowSessionModal(false)}
+                    >
+                      Close
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmitSessionRegistration}>
+                    <div className="ed-session-info">
+                      <div className="ed-info-row">
+                        <FaClock /> <strong>Time:</strong> {selectedSession.time}
+                      </div>
+                      <div className="ed-info-row">
+                        <FaMapMarkerAlt /> <strong>Location:</strong>{" "}
+                        {selectedSession.room}
+                      </div>
+                      <div className="ed-info-row">
+                        <FaUserTie /> <strong>Chair:</strong>{" "}
+                        {selectedSession.chair}
+                      </div>
+                      <div className="ed-info-row">
+                        <FaUsers /> <strong>Availability:</strong>{" "}
+                        {selectedSession.registeredCount}/
+                        {selectedSession.capacity}
+                      </div>
+                    </div>
+
+                    <div className="ed-form-group">
+                      <label>Additional Notes (Optional)</label>
+                      <textarea
+                        name="notes"
+                        value={workshopSessionForm.notes}
+                        onChange={handleWorkshopSessionChange}
+                        placeholder="Any special requirements or notes..."
+                        rows="3"
+                        disabled={registrationLoading}
+                      />
+                    </div>
+
+                    <div className="ed-form-group">
+                      <label>Dietary Requirements (Optional)</label>
+                      <input
+                        type="text"
+                        name="dietaryRequirements"
+                        value={workshopSessionForm.dietaryRequirements}
+                        onChange={handleWorkshopSessionChange}
+                        placeholder="e.g., Vegetarian, Gluten-free"
+                        disabled={registrationLoading}
+                      />
+                    </div>
+
+                    <div className="ed-form-group">
+                      <label>Special Needs (Optional)</label>
+                      <input
+                        type="text"
+                        name="specialNeeds"
+                        value={workshopSessionForm.specialNeeds}
+                        onChange={handleWorkshopSessionChange}
+                        placeholder="e.g., Wheelchair access"
+                        disabled={registrationLoading}
+                      />
+                    </div>
+
+                    <div className="ed-modal-footer">
+                      <div className="ed-terms">
+                        <input
+                          type="checkbox"
+                          id="session-terms"
+                          required
+                          disabled={registrationLoading}
+                        />
+                        <label htmlFor="session-terms">
+                          I confirm my registration for this session
+                        </label>
+                      </div>
+                      <div className="ed-modal-actions">
+                        <button
+                          type="button"
+                          className="ed-btn secondary"
+                          onClick={() => setShowSessionModal(false)}
+                          disabled={registrationLoading}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="ed-btn primary wide"
+                          disabled={registrationLoading}
+                        >
+                          {registrationLoading ? (
+                            <FaSpinner className="spin" />
+                          ) : (
+                            <FaBook />
+                          )}
+                          {registrationLoading
+                            ? "Registering..."
+                            : "Confirm Session Registration"}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* DELETE QUESTION CONFIRMATION MODAL */}
+      {
+        questionToDelete && (
+          <div className="ed-modal-backdrop">
+            <div className="ed-modal small">
+              <div className="ed-modal-header">
+                <h3 className="ed-modal-title">Delete Question</h3>
+              </div>
+              <div className="ed-modal-body">
+                <p>
+                  Are you sure you want to delete this question? This action
+                  cannot be undone.
+                </p>
+              </div>
+              <div className="ed-modal-footer">
+                <div className="ed-modal-actions">
+                  <button
+                    type="button"
+                    className="ed-btn secondary"
+                    onClick={() => setQuestionToDelete(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="ed-btn primary"
+                    onClick={handleDeleteQuestion}
+                  >
+                    <FaTrash /> Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 };
 

@@ -19,6 +19,8 @@ const port = process.env.PORT || 3000;
 
 const attestationRoutes = require("./routes/attestation.routes");
 const statsRoutes = require("./routes/stats.routes");
+const authorRoutes = require("./routes/author.routes");
+const userRoutes = require("./routes/user.routes");
 
 // Logger simple
 app.use((req, res, next) => {
@@ -44,6 +46,8 @@ app.use("/api", surveyRoutes);
 app.use("/api", messageRoutes);
 app.use("/api", notificationRoutes);
 app.use("/api/attestations", attestationRoutes);
+app.use("/api/author", authorRoutes);
+app.use("/api/users", userRoutes);
 
 // Route profil protégée
 app.get("/api/profile", verifyToken, (req, res) => {
