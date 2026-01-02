@@ -53,15 +53,9 @@ CREATE TABLE evenement (
     thematique VARCHAR(255),
     contact VARCHAR(255),
     id_organisateur INT,
-<<<<<<< HEAD
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (id_organisateur) REFERENCES utilisateur(id) ON DELETE SET NULL
-=======
-    -- champ ajouté
-    date_limite_communication DATETIME,
-    FOREIGN KEY (id_organisateur) REFERENCES utilisateur(id)
->>>>>>> 474392008d5cf99afa343fff9ca5be470cad575f
 );
 
 -- ============================================
@@ -71,22 +65,12 @@ CREATE TABLE inscription (
     id INT PRIMARY KEY AUTO_INCREMENT,
     participant_id INT NOT NULL,
     evenement_id INT NOT NULL,
-<<<<<<< HEAD
     statut_paiement ENUM('a_payer', 'paye_sur_place', 'paye') DEFAULT 'a_payer',
     badge VARCHAR(255),
     date_inscription DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (participant_id) REFERENCES utilisateur(id) ON DELETE CASCADE,
     FOREIGN KEY (evenement_id) REFERENCES evenement(id) ON DELETE CASCADE,
-=======
-    -- défaut ajouté
-    statut_paiement ENUM('a_payer', 'paye_sur_place', 'paye') DEFAULT 'a_payer',
-    badge VARCHAR(255),
-    date_inscription DATE,
-    FOREIGN KEY (participant_id) REFERENCES utilisateur(id),
-    FOREIGN KEY (evenement_id) REFERENCES evenement(id),
-    -- contrainte ajoutée
->>>>>>> 474392008d5cf99afa343fff9ca5be470cad575f
     UNIQUE (participant_id, evenement_id)
 );
 
@@ -98,7 +82,6 @@ CREATE TABLE presence (
     utilisateur_id INT NOT NULL,
     evenement_id INT NOT NULL,
     type VARCHAR(50),
-<<<<<<< HEAD
     date_presence DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (utilisateur_id) REFERENCES utilisateur(id) ON DELETE CASCADE,
@@ -108,15 +91,6 @@ CREATE TABLE presence (
 -- ============================================
 -- TABLE COMITE_SCIENTIFIQUE
 -- ============================================
-=======
-    date_presence DATETIME,
-    FOREIGN KEY (utilisateur_id) REFERENCES utilisateur(id),
-    FOREIGN KEY (evenement_id) REFERENCES evenement(id),
-    -- contrainte ajoutée
-    UNIQUE (utilisateur_id, evenement_id, date_presence)
-);
-
->>>>>>> 474392008d5cf99afa343fff9ca5be470cad575f
 CREATE TABLE comite_scientifique (
     id INT PRIMARY KEY AUTO_INCREMENT,
     evenement_id INT NOT NULL,
@@ -131,15 +105,9 @@ CREATE TABLE membre_comite (
     id INT PRIMARY KEY AUTO_INCREMENT,
     utilisateur_id INT NOT NULL,
     comite_id INT NOT NULL,
-<<<<<<< HEAD
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (utilisateur_id) REFERENCES utilisateur(id) ON DELETE CASCADE,
     FOREIGN KEY (comite_id) REFERENCES comite_scientifique(id) ON DELETE CASCADE,
-=======
-    FOREIGN KEY (utilisateur_id) REFERENCES utilisateur(id),
-    FOREIGN KEY (comite_id) REFERENCES comite_scientifique(id),
-    -- contrainte ajoutée
->>>>>>> 474392008d5cf99afa343fff9ca5be470cad575f
     UNIQUE (utilisateur_id, comite_id)
 );
 
@@ -153,7 +121,6 @@ CREATE TABLE communication (
     -- NOT NULL ajouté
     type ENUM('orale', 'affiche', 'poster') NOT NULL,
     fichier_pdf VARCHAR(255),
-<<<<<<< HEAD
     etat ENUM('en_attente', 'acceptee', 'refusee', 'en_revision') DEFAULT 'en_attente',
     auteur_id INT,
     evenement_id INT,
@@ -161,21 +128,6 @@ CREATE TABLE communication (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (auteur_id) REFERENCES utilisateur(id) ON DELETE CASCADE,
     FOREIGN KEY (evenement_id) REFERENCES evenement(id) ON DELETE CASCADE
-=======
-    -- valeurs ajoutées + défaut
-    etat ENUM('en_attente', 'acceptee', 'refusee', 'en_revision', 'retire')
-        NOT NULL DEFAULT 'en_attente',
-    -- NOT NULL ajoutés
-    auteur_id INT NOT NULL,
-    evenement_id INT NOT NULL,
-    -- champs ajoutés
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP,
-    decided_by INT,
-    FOREIGN KEY (auteur_id) REFERENCES utilisateur(id),
-    FOREIGN KEY (evenement_id) REFERENCES evenement(id)
-    -- PAS de fk sur decided_by puisque tu as demandé de ne pas ajouter de nouvelle contrainte
->>>>>>> 474392008d5cf99afa343fff9ca5be470cad575f
 );
 
 -- ============================================
@@ -188,7 +140,6 @@ CREATE TABLE evaluation (
     -- type ajusté
     note TINYINT,
     commentaire TEXT,
-<<<<<<< HEAD
     decision ENUM('accepter', 'refuser', 'corriger'),
     pertinence INT DEFAULT NULL,
     qualite_scientifique INT DEFAULT NULL,
@@ -216,19 +167,6 @@ CREATE TABLE rapport_evaluation (
 -- ============================================
 -- TABLE SESSION
 -- ============================================
-=======
-    -- NOT NULL ajouté
-    decision ENUM('accepter', 'refuser', 'corriger') NOT NULL,
-    date_evaluation DATE,
-    -- champs ajoutés
-    pertinence TINYINT,
-    qualite_scientifique TINYINT,
-    originalite TINYINT,
-    FOREIGN KEY (communication_id) REFERENCES communication(id),
-    FOREIGN KEY (membre_comite_id) REFERENCES membre_comite(id)
-);
-
->>>>>>> 474392008d5cf99afa343fff9ca5be470cad575f
 CREATE TABLE session (
     id INT PRIMARY KEY AUTO_INCREMENT,
     evenement_id INT NOT NULL,
@@ -290,12 +228,9 @@ CREATE TABLE support_atelier (
     FOREIGN KEY (workshop_id) REFERENCES workshop(id) ON DELETE CASCADE
 );
 
-<<<<<<< HEAD
 -- ============================================
 -- TABLE INVITE
 -- ============================================
-=======
->>>>>>> 474392008d5cf99afa343fff9ca5be470cad575f
 CREATE TABLE invite (
     id INT PRIMARY KEY AUTO_INCREMENT,
     nom VARCHAR(100) NOT NULL,
@@ -339,19 +274,15 @@ CREATE TABLE statistique (
     UNIQUE (evenement_id)
 );
 
-<<<<<<< HEAD
 -- ============================================
 -- TABLE MESSAGE_INTERNE
 -- ============================================
-=======
->>>>>>> 474392008d5cf99afa343fff9ca5be470cad575f
 CREATE TABLE message_interne (
     id INT PRIMARY KEY AUTO_INCREMENT,
     expediteur_id INT NOT NULL,
     destinataire_id INT NOT NULL,
     evenement_id INT,
     contenu TEXT NOT NULL,
-<<<<<<< HEAD
     date_envoi DATETIME DEFAULT CURRENT_TIMESTAMP,
     type ENUM('notif', 'reponse', 'modif_prog'),
     lu BOOLEAN DEFAULT FALSE,
@@ -359,15 +290,6 @@ CREATE TABLE message_interne (
     FOREIGN KEY (expediteur_id) REFERENCES utilisateur(id) ON DELETE CASCADE,
     FOREIGN KEY (destinataire_id) REFERENCES utilisateur(id) ON DELETE CASCADE,
     FOREIGN KEY (evenement_id) REFERENCES evenement(id) ON DELETE SET NULL
-=======
-    -- défaut ajouté
-    date_envoi DATETIME DEFAULT CURRENT_TIMESTAMP,
-    -- NOT NULL ajouté
-    type ENUM('notif', 'reponse', 'modif_prog') NOT NULL,
-    FOREIGN KEY (expediteur_id) REFERENCES utilisateur(id),
-    FOREIGN KEY (destinataire_id) REFERENCES utilisateur(id),
-    FOREIGN KEY (evenement_id) REFERENCES evenement(id)
->>>>>>> 474392008d5cf99afa343fff9ca5be470cad575f
 );
 
 -- ============================================
